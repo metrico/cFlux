@@ -19,7 +19,7 @@
   "homepage": "https://github.com/lmangani/clickflux#readme",
   "dependencies": {
     "@apla/clickhouse": "^1.5.3",
-    "clickline": "^1.0.2",
+    "clickline": "^1.0.4",
     "express": "^4.16.4"
   }
 }

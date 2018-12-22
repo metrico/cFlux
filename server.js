@@ -5,7 +5,7 @@
  * Some Rights Reserved.
  */
 
-var debug = false;
+var debug = process.env.DEBUG || false;
 
 const clickline = require('clickline');
 const ClickHouse = require('@apla/clickhouse');
@@ -75,17 +75,12 @@ app.post('/write', function(req, res) {
   	// Re-Initialize Clickhouse Client
   	clickhouse = new ClickHouse(clickhouse_options);
   }
-  // Use TABLE from Query, if any
-  var table = 'ts1';
-  if (req.query.table) { 
-	table = req.query.table
-	if (debug) console.log('TABLE:',table);
-  }
 
-  var query = clickline(req.rawBody, table);
-  if (debug) console.log('Trying.. ', query);
-  if (!tables[table]) clickhouse.querying(createTable(table)).then((result) => sendQuery(query,res) )
-  else sendQeury(query, res);
+  var query = clickline(req.rawBody);
+  if (query.parsed.measurement) table = query.parsed.measurement;
+  if (debug) console.log('Trying.. ', query, table);
+  if (!tables[table]) clickhouse.querying(createTable(table)).then((result) => sendQuery(query.query,res) )
+  else sendQeury(query.query, res);
 });
 
 http.createServer(app).listen(app.get('port'), function(){
