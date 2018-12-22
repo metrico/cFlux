@@ -5,7 +5,7 @@
  * Some Rights Reserved.
  */
 
-var debug = true;
+var debug = false;
 
 const clickline = require('clickline');
 const ClickHouse = require('@apla/clickhouse');
@@ -22,6 +22,9 @@ var express = require('express')
   , http = require('http')
   , path = require('path')
   , util = require('util');
+
+const bodyParser = require('body-parser');  
+
 
 var app = express();
 
@@ -41,23 +44,28 @@ app.use(rawBody);
 
 app.post('/write', function(req, res) {
   if (debug) console.log('RAW: ' , req.rawBody);
+  if (debug) console.log('QUERY: ', req.query);
   if (debug) console.log('PARAMS: ', req.params);
 
   // Use DB from Query, if any
-  if (req.param('db')) {
-	clickhouse_options.queryOptions.database = req.param('db');
+  if (req.query.db) {
+	if (debug) console.log('DB',req.query.db )
+	clickhouse_options.queryOptions.database = req.query.db;
   	// Re-Initialize Clickhouse Client
   	clickhouse = new ClickHouse(clickhouse_options);
   }
   // Use TABLE from Query, if any
   var table = 'ts1';
-  if (req.param('table')) { table = req.param('table') }
+  if (req.query.table) { 
+	table = req.query.table
+	if (debug) console.log('TABLE:',table);
+  }
 
   var query = clickline(req.rawBody, table);
   if (debug) console.log('Trying.. ', query);
   clickhouse.query(query, function (err, data) {
         if (err) {
-                if (debug) console.log('ERR',err);
+                console.log('ERR',err);
                 res.sendStatus(500);
         } else {
                 if (debug) console.log(data);
