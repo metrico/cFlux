@@ -84,7 +84,7 @@ app.post('/write', function(req, res) {
   if (tables.indexOf(table) === -1) { 
 	  clickhouse.querying(createTable(table)).then((result) => sendQuery(query.query,res,true) )
   } else {
-	  sendQeury(query.query, res);
+	  sendQuery(query.query, res);
   }
 });
 
