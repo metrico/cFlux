@@ -1,7 +1,7 @@
 <img src="https://user-images.githubusercontent.com/1423657/50374656-0a078400-05f2-11e9-8754-98b98e0244c4.png" width=100>
 
 # nonFlux
-Experimental InfluxDB to Clickhouse Gateway for Timeseries
+Experimental, unoptimized InfluxDB to Clickhouse Gateway for Timeseries. Hop on the bandwagon!
 
 
 ### Status
