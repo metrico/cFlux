@@ -1,7 +1,7 @@
 <img src="https://user-images.githubusercontent.com/1423657/50374656-0a078400-05f2-11e9-8754-98b98e0244c4.png" width=100>
 
 # nonFlux
-Experimental, unoptimized InfluxDB to Clickhouse Gateway prototype for Timeseries. Hop on the bandwagon!
+Experimental, unoptimized InfluxDB to Clickhouse Gateway prototype for Timeseries. Do not use this!
 
 
 ### Status
@@ -21,6 +21,10 @@ Experimental, unoptimized InfluxDB to Clickhouse Gateway prototype for Timeserie
 ```
 CLICKHOUSE_SERVER=my.clickhouse.server npm start
 ```
+
+The server attempts emulating an InfluxDB instance with basic features and can accept data from Telegraf and other line clients.
+
+
 ##### POST Metrics `/write`
 The `/write` endpoint expects HTTP POST data using the InfluxDB line protocol:
 ```
@@ -31,3 +35,5 @@ The `/write` endpoint expects HTTP POST data using the InfluxDB line protocol:
  curl -d "statistics_method,cseq=OPTIONS 100=1,OPTIONS=1 1545424651000000000" \
       -X POST 'http://localhost:8686/write?db=mystats'
 ```
+
+![image](https://user-images.githubusercontent.com/1423657/50379244-d7d34200-0644-11e9-9e99-6cf7e90d361b.png)
