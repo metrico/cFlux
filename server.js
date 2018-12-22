@@ -31,7 +31,7 @@ var getTables = function(){
 	var showTables = "show tables";
 	var stream = clickhouse.query (showTables);
 	stream.on ('data', function (row) {
-	  tables.push (row[0]);
+	  if (tables.indexOf(row[0]) === -1) tables.push (row[0]);
 	});
 	stream.on ('error', function (err) {
 		  // TODO: handler error
