@@ -128,3 +128,8 @@ app.post('/query', function(req, res) {
 	
 });
 
+/* INFLUXDB PING EMULATION */
+app.get('/ping', (req, res) => {
+	if (debug) console.log('PING req', req);
+	clickhouse.pinging().then((result) => { res.sendStatus(204) } )
+})
