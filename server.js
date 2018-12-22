@@ -79,16 +79,26 @@ app.post('/write', function(req, res) {
   	clickhouse = new ClickHouse(clickhouse_options);
   }
 
-  var query = clickline(req.rawBody);
-  if (query.parsed.measurement) table = query.parsed.measurement;
-  if (debug) console.log('Trying.. ', query, table);
-  if (tables.indexOf(table) === -1) { 
-	  try {
-	  	clickhouse.querying(createTable(table)).then((result) => sendQuery(query.query,res,true) )
-	  } catch(e) { res.send(e) }
-  } else {
-	  sendQuery(query.query, res);
-  }
+  var queries = req.rawBody.split("\n");
+  queries.forEach(function(rawBody){
+	  if (!rawBody) return;
+	  var query = clickline(rawBody);
+	  console.log('PARSED QUERY',query); 
+	  if (query.parsed.measurement) table = query.parsed.measurement;
+	  if (debug) console.log('Trying.. ', query, table);
+	  if (tables.indexOf(table) === -1) { 
+		  console.log('Creating new table...',table)
+		  try {
+			console.log('FUCK',createTable(table),table,query.query);
+			clickhouse.querying(createTable(table))
+				.then((result) => sendQuery(query.query,false,true) )
+			getTables();
+		  } catch(e) { console.log(e) }
+	  } else {
+		  sendQuery(query.query);
+	  }
+  });
+  res.sendStatus(200);
 });
 
 http.createServer(app).listen(app.get('port'), function(){
@@ -96,22 +106,23 @@ http.createServer(app).listen(app.get('port'), function(){
 });
 
 var sendQuery = async function(query,res,update){
-  if (debug) console.log('SHIPPING QUERY...',query);
+  if (debug) console.log('SHIPPING QUERY...',query,res,update);
   clickhouse.query(query, {syncParser: true}, function (err, data) {
         if (err) {
-                console.log('QUERY ERR',err);
-		var parsed = err.Error.match(/^Table\s(.*) doesn/g);
-               console.log('Create Table and retry!',parsed);
-               if (parsed[1] !== 'undefined'){
+                console.log('QUERY ERR',err.toString());
+		var parsed = err.toString().match(/Table\s(.*) doesn/g);
+               	if (parsed && parsed[1]){
+               	 console.log('Create Table and retry!',parsed);
                  try {
                        clickhouse.querying(createTable(parsed[1])).then((result) => sendQuery(query.query,res,true) )
-                       res.sendStatus(200);
-                 } catch(e) { res.sendStatus(500) }
-               } 
-               res.sendStatus(500);
+                       if(res) res.sendStatus(200);
+                 } catch(e) { if (res) res.sendStatus(500) }
+               	} else {
+			return;
+		}
         } else {
                 if (debug) console.log(data);
-                res.sendStatus(200);
+                if (res) res.sendStatus(200);
         }
 	if (update) getTables();
   });
@@ -146,3 +157,7 @@ app.get('/ping', (req, res) => {
 	if (debug) console.log('PING req', req);
 	clickhouse.pinging().then((result) => { res.sendStatus(204) } )
 })
+
+process.on('unhandledRejection', function(err, promise) {
+    console.error('Unhandled rejection (promise: ', promise, ', reason: ', err, ').');
+});
