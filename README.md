@@ -13,5 +13,6 @@ CLICKHOUSE_SERVER=my.clickhouse.server npm start
 ```
 ##### Post Metrics
 ```
- curl -d "statistics_method,cseq=OPTIONS 100=1,OPTIONS=1 1545424651000000000" -X POST 'http://localhost:8686/write?db=mystats'
+ curl -d "statistics_method,cseq=OPTIONS 100=1,OPTIONS=1 1545424651000000000" \
+      -X POST 'http://localhost:8686/write?db=mystats'
 ```
