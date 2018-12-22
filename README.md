@@ -1,7 +1,7 @@
 <img src="https://user-images.githubusercontent.com/1423657/50374656-0a078400-05f2-11e9-8754-98b98e0244c4.png" width=100>
 
 # nonFlux
-Experimental, unoptimized InfluxDB to Clickhouse Gateway for Timeseries. Hop on the bandwagon!
+Experimental, unoptimized InfluxDB to Clickhouse Gateway prototype for Timeseries. Hop on the bandwagon!
 
 
 ### Status
@@ -9,7 +9,12 @@ Experimental, unoptimized InfluxDB to Clickhouse Gateway for Timeseries. Hop on 
   - [x] line protocol parser
   - [x] clickhouse insert statement
 - [ ] implement `/query`
-   - [x] ifql protocol parser
+  - [x] ifql protocol parser
+  - [x] SHOW DATABASES
+  - [x] SHOW MEASUREMENTS
+  - [x] SHOW RETENTION POLICIES (fake)
+  - [ ] SHOW TAG KEYS
+  - [ ] SELECT
 
 ### Usage
 ##### Start Server
