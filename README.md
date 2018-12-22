@@ -1,4 +1,4 @@
-# clickFlux
+# nonFlux
 Experimental InfluxDB to Clickhouse Gateway for Timeseries
 
 
