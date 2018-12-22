@@ -81,8 +81,11 @@ app.post('/write', function(req, res) {
   var query = clickline(req.rawBody);
   if (query.parsed.measurement) table = query.parsed.measurement;
   if (debug) console.log('Trying.. ', query, table);
-  if (!tables[table]) clickhouse.querying(createTable(table)).then((result) => sendQuery(query.query,res) )
-  else sendQeury(query.query, res);
+  if (!tables[table]) { 
+	  clickhouse.querying(createTable(table)).then((result) => sendQuery(query.query,res,true) )
+  } else {
+	  sendQeury(query.query, res);
+  }
 });
 
 http.createServer(app).listen(app.get('port'), function(){
@@ -90,7 +93,7 @@ http.createServer(app).listen(app.get('port'), function(){
 });
 
 
-var sendQuery = async function(query,res){
+var sendQuery = async function(query,res,update){
   if (debug) console.log('SHIPPING QUERY...',query);
   clickhouse.query(query, {syncParser: true}, function (err, data) {
         if (err) {
@@ -100,6 +103,7 @@ var sendQuery = async function(query,res){
                 if (debug) console.log(data);
                 res.sendStatus(200);
         }
+	if (update) getTables();
   });
 };
 
@@ -107,6 +111,7 @@ app.post('/query', function(req, res) {
   if (debug) console.log('RAW: ' , req.rawBody);
   if (debug) console.log('QUERY: ', req.query);
   var rawQuery =  req.rawBody.replace(/^q=/,'');
+  rawQuery = unescape(rawQuery);
   res.send( ifqlparser.parse(rawQuery) );
 });
 
