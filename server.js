@@ -18,13 +18,35 @@ const clickhouse_options = {
 
 var clickhouse = new ClickHouse(clickhouse_options);
 
+var createTable = function(tableName){
+	if (!tableName || tables[tableName]) return;
+	var query = "CREATE TABLE IF NOT EXISTS "+tableName+" (entity String, ts UInt64, m Array(String), mv Array(Float32), t Array(String), tv Array(String), d Date MATERIALIZED toDate(round(ts/1000)), dt DateTime MATERIALIZED toDateTime(round(ts/1000)) ) ENGINE = MergeTree(d, entity, 8192)";
+	return query;
+};
+
+var tables = [];
+var getTables = function(){
+	var showTables = "show tables";
+	var stream = clickhouse.query (showTables);
+	stream.on ('data', function (row) {
+	  tables.push (row[0]);
+	});
+	stream.on ('error', function (err) {
+		  // TODO: handler error
+		  console.log('GET TABLES ERR',err);
+		return false;
+	});
+	stream.on ('end', function () {
+		console.log('TABLES:',tables);
+		return tables;
+	});
+}
+getTables();
+
 var express = require('express')
   , http = require('http')
   , path = require('path')
   , util = require('util');
-
-const bodyParser = require('body-parser');  
-
 
 var app = express();
 
@@ -45,7 +67,6 @@ app.use(rawBody);
 app.post('/write', function(req, res) {
   if (debug) console.log('RAW: ' , req.rawBody);
   if (debug) console.log('QUERY: ', req.query);
-  if (debug) console.log('PARAMS: ', req.params);
 
   // Use DB from Query, if any
   if (req.query.db) {
@@ -63,17 +84,24 @@ app.post('/write', function(req, res) {
 
   var query = clickline(req.rawBody, table);
   if (debug) console.log('Trying.. ', query);
-  clickhouse.query(query, function (err, data) {
+  if (!tables[table]) clickhouse.querying(createTable(table)).then((result) => sendQuery(query,res) )
+  else sendQeury(query, res);
+});
+
+http.createServer(app).listen(app.get('port'), function(){
+  console.log("ClickFlux server listening on port " + app.get('port'));
+});
+
+
+var sendQuery = async function(query,res){
+  if (debug) console.log('SHIPPING QUERY...',query);
+  clickhouse.query(query, {syncParser: true}, function (err, data) {
         if (err) {
-                console.log('ERR',err);
+                console.log('QUERY ERR',err);
                 res.sendStatus(500);
         } else {
                 if (debug) console.log(data);
                 res.sendStatus(200);
         }
   });
-});
-
-http.createServer(app).listen(app.get('port'), function(){
-  console.log("ClickFlux server listening on port " + app.get('port'));
-});
+};
