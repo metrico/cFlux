@@ -106,6 +106,7 @@ var sendQuery = async function(query,res){
 app.post('/query', function(req, res) {
   if (debug) console.log('RAW: ' , req.rawBody);
   if (debug) console.log('QUERY: ', req.query);
-  res.send( ifqlparser.parse(req.rawBody) );
+  var rawQuery =  req.rawBody.replace(/^q=/,'');
+  res.send( ifqlparser.parse(rawQuery) );
 });
 
