@@ -1,6 +1,6 @@
 {
   "name": "clickFlux",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "InfluxDB to Clickhouse Gateway",
   "main": "server.js",
   "scripts": {
@@ -20,6 +20,7 @@
   "dependencies": {
     "@apla/clickhouse": "^1.5.3",
     "clickline": "^1.0.4",
-    "express": "^4.16.4"
+    "express": "^4.16.4",
+    "ifql-parser": "^0.1.6"
   }
 }

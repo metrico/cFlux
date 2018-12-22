@@ -7,6 +7,8 @@
 
 var debug = process.env.DEBUG || false;
 
+const ifqlparser = require('ifql-parser')();
+
 const clickline = require('clickline');
 const ClickHouse = require('@apla/clickhouse');
 
@@ -100,3 +102,10 @@ var sendQuery = async function(query,res){
         }
   });
 };
+
+app.post('/query', function(req, res) {
+  if (debug) console.log('RAW: ' , req.rawBody);
+  if (debug) console.log('QUERY: ', req.query);
+  res.send( ifqlparser.parse(req.rawBody) );
+});
+
