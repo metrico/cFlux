@@ -92,7 +92,6 @@ http.createServer(app).listen(app.get('port'), function(){
   console.log("ClickFlux server listening on port " + app.get('port'));
 });
 
-
 var sendQuery = async function(query,res,update){
   if (debug) console.log('SHIPPING QUERY...',query);
   clickhouse.query(query, {syncParser: true}, function (err, data) {
@@ -111,11 +110,18 @@ app.post('/query', function(req, res) {
   if (debug) console.log('RAW: ' , req.rawBody);
   if (debug) console.log('QUERY: ', req.query);
   try {
-	  var rawQuery =  unescape( req.rawBody.replace(/^q=/,'').replace(/\+/g,' ') );
-	  res.send( ifqlparser.parse(rawQuery) );
-  } catch(e) { 
-	  console.log(e); 
-	  res.sendStatus(500); 
+          var rawQuery =  unescape( req.rawBody.replace(/^q=/,'').replace(/\+/g,' ') );
+          if (rawQuery.startsWith('CREATE DATABASE')) {
+                  clickhouse.querying(rawQuery)
+			  .then((result) => { console.log(result.data) } )
+			  .then((result) => { res.sendStatus(200) } )
+          } else {
+                var parsed   =  ifqlparser.parse(rawQuery);
+                res.send(parsed);
+          }
+  } catch(e) {
+          console.log(e);
+          res.sendStatus(500);
   }
 	
 });
