@@ -9,7 +9,12 @@ Experimental, unoptimized InfluxDB to Clickhouse Gateway for Timeseries. Hop on 
   - [x] line protocol parser
   - [x] clickhouse insert statement
 - [ ] implement `/query`
-   - [x] ifql protocol parser
+  - [x] ifql protocol parser
+  - [x] SHOW DATABASES
+  - [x] SHOW MEASUREMENTS
+  - [x] SHOW RETENTION POLICIES (fake)
+  - [ ] SHOW TAG KEYS
+  - [ ] SELECT
 
 ### Usage
 ##### Start Server
