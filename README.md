@@ -31,3 +31,5 @@ The `/write` endpoint expects HTTP POST data using the InfluxDB line protocol:
  curl -d "statistics_method,cseq=OPTIONS 100=1,OPTIONS=1 1545424651000000000" \
       -X POST 'http://localhost:8686/write?db=mystats'
 ```
+
+![image](https://user-images.githubusercontent.com/1423657/50379244-d7d34200-0644-11e9-9e99-6cf7e90d361b.png)
