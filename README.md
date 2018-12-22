@@ -4,7 +4,10 @@ Experimental InfluxDB to Clickhouse Gateway for Timeseries
 
 ### Status
 - [x] implement `/write`
+  - [x] line protocol parser
+  - [x] clickhouse insert statement
 - [ ] implement `/query`
+   - [x] ifql protocol parser
 
 ### Usage
 ##### Start Server
