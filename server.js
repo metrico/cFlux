@@ -39,7 +39,7 @@ var getTables = function(){
 		return false;
 	});
 	stream.on ('end', function () {
-		console.log('TABLES:',tables);
+		if (debug) console.log('RELOAD TABLES:',tables);
 		return tables;
 	});
 }
