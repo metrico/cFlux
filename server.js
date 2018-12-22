@@ -261,7 +261,8 @@ app.all('/query', function(req, res) {
 		var where = parsed.parsed.table_exp.where;
 		var response = [];
 		var sample = "SELECT entity, dt, ts, arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name,  metric.2 AS metric_value FROM "+settings.table+" WHERE dt BETWEEN NOW()-3000 AND NOW()"
-		clickhouse_options.queryOptions.database = settings.database.replace('.autogen','');
+		console.log(settings)
+		clickhouse_options.queryOptions.database = settings.db || settings.database.replace('.autogen','');
 	  	// Re-Initialize Clickhouse Client
 	  	var tmp = new ClickHouse(clickhouse_options);
 		var stream = tmp.query(sample);
