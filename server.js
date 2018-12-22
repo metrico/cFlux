@@ -30,7 +30,7 @@ var createTable = function(tableName){
 var tables = [];
 var getTables = function(){
 	var showTables = "show tables";
-	var stream = clickhouse.query (showTables);
+	var stream = clickhouse.query(showTables);
 	stream.on ('data', function (row) {
 	  if (tables.indexOf(row[0]) === -1) tables.push (row[0]);
 	});
@@ -81,10 +81,9 @@ app.post('/write', function(req, res) {
 
   var queries = req.rawBody.split("\n");
   queries.forEach(function(rawBody){
-	  if (!rawBody) return;
+	  if (!rawBody || rawBody == '') return;
 	  var query = clickline(rawBody);
 	  if (query.parsed.measurement) table = query.parsed.measurement;
-	  if (debug) console.log('Trying.. ', query, table);
 	  if (tables.indexOf(table) === -1) { 
 		  console.log('Creating new table...',table)
 		  try {
@@ -104,10 +103,11 @@ http.createServer(app).listen(app.get('port'), function(){
 });
 
 var sendQuery = async function(query,res,update){
+  if (query.includes('undefined')) return;
   if (debug) console.log('SHIPPING QUERY...',query,res,update);
   clickhouse.query(query, {syncParser: true}, function (err, data) {
         if (err) {
-                console.log('QUERY ERR',err.toString());
+                console.log('QUERY ERR',err.toString(),query);
 		var parsed = err.toString().match(/Table\s(.*) doesn/g);
                	if (parsed && parsed[1]){
                	 console.log('Create Table and retry!',parsed);
@@ -126,18 +126,70 @@ var sendQuery = async function(query,res,update){
   });
 };
 
-app.post('/query', function(req, res) {
-  if (debug) console.log('RAW: ' , req.rawBody);
-  if (debug) console.log('QUERY: ', req.query);
+var databases = [];
+app.all('/query', function(req, res) {
+  console.log('QUERY:', req.query.q, req.rawBody);
+  var rawQuery;
   try {
-          var rawQuery =  unescape( req.rawBody.replace(/^q=/,'').replace(/\+/g,' ') );
+	  if(req.query.q) { rawQuery = req.query.q; }
+          else if(req.rawBody) { rawQuery =  unescape( req.rawBody.replace(/^q=/,'').replace(/\+/g,' ') ); }
+
           if (rawQuery.startsWith('CREATE DATABASE')) {
 		  res.sendStatus(200);
-		  /*
-                  clickhouse.querying(rawQuery)
-			  .then((result) => { console.log(result.data) } )
-			  .then((result) => { res.sendStatus(200) } )
-		  */
+
+          } else if (rawQuery.startsWith('SHOW RETENTION')) {
+		var data = { "results": [] };
+		databases.forEach(function(db,i){
+	  	    data.results.push({
+		      "statement_id": i,
+		      "series": [
+		        {
+		          "columns": [
+		            "name",
+		            "duration",
+		            "shardGroupDuration",
+		            "replicaN",
+		            "default"
+		          ],
+		          "values": [
+		            [
+		              "autogen",
+		              "0s",
+		              "168h0m0s",
+		              1,
+		              true
+		            ]
+		          ]
+		        }
+		      ]
+		    });
+			
+		});
+		res.send(data);
+
+          } else if (rawQuery.startsWith('SHOW MEASUREMENTS')) {
+		databases.forEach(function(db){
+			
+		});
+		res.send(results);
+
+          } else if (rawQuery.startsWith('SHOW DATABASES')) {
+		var response = [];
+		var stream = clickhouse.query(rawQuery);
+		stream.on ('data', function (row) {
+		  response.push (row);
+		});
+		stream.on ('error', function (err) {
+			// TODO: handler error
+			console.log('GET DATA ERR',err);
+		});
+		stream.on ('end', function () {
+			databases = response;
+			var results = {"results":[{"statement_id":0,"series":[{"name":"databases","columns":["name"], "values": response } ]} ]};
+			console.log(JSON.stringify(results));
+			res.send(results);
+		});
+
           } else {
                 var parsed = ifqlparser.parse(rawQuery);
                 res.send(parsed);
