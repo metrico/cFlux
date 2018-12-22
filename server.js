@@ -108,7 +108,7 @@ var sendQuery = async function(query,res,update){
   clickhouse.query(query, {syncParser: true}, function (err, data) {
         if (err) {
                 console.log('QUERY ERR',err.toString(),query);
-		var parsed = err.toString().match(/Table\s(.*) doesn/g);
+		var parsed = err.toString().match(/Table\s(.*) doesn/);
                	if (parsed && parsed[1]){
                	 console.log('Create Table and retry!',parsed);
                  try {
@@ -167,11 +167,81 @@ app.all('/query', function(req, res) {
 		});
 		res.send(data);
 
+          } else if (rawQuery.startsWith('SHOW FIELD KEYS')) {
+
+		var parsed = rawQuery.match(/SHOW FIELD KEYS FROM "(.*)"."(.*)"/);
+		console.log('SHOW FIELDS!',parsed,rawQuery);
+		if (parsed && parsed[1] && parsed[2]){
+			console.log('get fields for',parsed[2],req.query.db);
+			var response = [];
+			clickhouse_options.queryOptions.database = req.query.db;
+		  	// Re-Initialize Clickhouse Client
+		  	var tmp = new ClickHouse(clickhouse_options);
+			var stream = tmp.query("SELECT DISTINCT m FROM "+parsed[2]+" ARRAY JOIN m");
+			stream.on ('data', function (row) {
+			  response.push ([row[0],"float"]);
+			});
+			stream.on ('error', function (err) {
+				// TODO: handler error
+				console.log('GET DATA ERR',err);
+			});
+			stream.on ('end', function () {
+				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["fieldKey","fieldType"],"values":response }]}]};
+				console.log(JSON.stringify(results));
+				res.send(results);
+			});
+
+		}
+
+          } else if (rawQuery.startsWith('SHOW TAG KEYS')) {
+
+
+		var parsed = rawQuery.match(/SHOW TAG KEYS FROM "(.*)"."(.*)"/);
+		console.log('SHOW FIELDS!',parsed,rawQuery);
+		if (parsed && parsed[1] && parsed[2]){
+			console.log('get fields for',parsed[2],req.query.db);
+			var response = [];
+			clickhouse_options.queryOptions.database = req.query.db;
+		  	// Re-Initialize Clickhouse Client
+		  	var tmp = new ClickHouse(clickhouse_options);
+			var stream = tmp.query("SELECT DISTINCT t FROM "+parsed[2]+" ARRAY JOIN t");
+			stream.on ('data', function (row) {
+			  response.push ([row[0],"float"]);
+			});
+			stream.on ('error', function (err) {
+				// TODO: handler error
+				console.log('GET DATA ERR',err);
+			});
+			stream.on ('end', function () {
+				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["key","value"],"values":[] }]}]}
+				console.log(JSON.stringify(results));
+				res.send(results);
+			});
+
+		}
+
           } else if (rawQuery.startsWith('SHOW MEASUREMENTS')) {
-		databases.forEach(function(db){
-			
-		});
-		res.send(results);
+		if (req.query.db) {
+			console.log('get measurements for',req.query.db);
+			var response = [];
+			clickhouse_options.queryOptions.database = req.query.db;
+		  	// Re-Initialize Clickhouse Client
+		  	var tmp = new ClickHouse(clickhouse_options);
+			var stream = tmp.query('SHOW TABLES');
+			stream.on ('data', function (row) {
+			  response.push (row);
+			});
+			stream.on ('error', function (err) {
+				// TODO: handler error
+				console.log('GET DATA ERR',err);
+			});
+			stream.on ('end', function () {
+				var results = {"results":[{"statement_id":0,"series":[{"name":"measurements","columns":["name"],"values":response }]}]}
+				console.log(JSON.stringify(results));
+				res.send(results);
+			});
+
+		}
 
           } else if (rawQuery.startsWith('SHOW DATABASES')) {
 		var response = [];
