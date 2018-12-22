@@ -22,7 +22,7 @@ const clickhouse_options = {
 var clickhouse = new ClickHouse(clickhouse_options);
 
 var createTable = function(tableName){
-	if (!tableName || tables.indexOf(tableName) === -1) return;
+	if (!tableName) return;
 	var query = "CREATE TABLE IF NOT EXISTS "+tableName+" (entity String, ts UInt64, m Array(String), mv Array(Float32), t Array(String), tv Array(String), d Date MATERIALIZED toDate(round(ts/"+tsDivide+")), dt DateTime MATERIALIZED toDateTime(round(ts/"+tsDivide+")) ) ENGINE = MergeTree(d, entity, 8192)";
 	return query;
 };
