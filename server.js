@@ -83,13 +83,11 @@ app.post('/write', function(req, res) {
   queries.forEach(function(rawBody){
 	  if (!rawBody) return;
 	  var query = clickline(rawBody);
-	  console.log('PARSED QUERY',query); 
 	  if (query.parsed.measurement) table = query.parsed.measurement;
 	  if (debug) console.log('Trying.. ', query, table);
 	  if (tables.indexOf(table) === -1) { 
 		  console.log('Creating new table...',table)
 		  try {
-			console.log('FUCK',createTable(table),table,query.query);
 			clickhouse.querying(createTable(table))
 				.then((result) => sendQuery(query.query,false,true) )
 			getTables();
