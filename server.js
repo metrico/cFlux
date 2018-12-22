@@ -82,7 +82,9 @@ app.post('/write', function(req, res) {
   if (query.parsed.measurement) table = query.parsed.measurement;
   if (debug) console.log('Trying.. ', query, table);
   if (tables.indexOf(table) === -1) { 
-	  clickhouse.querying(createTable(table)).then((result) => sendQuery(query.query,res,true) )
+	  try {
+	  	clickhouse.querying(createTable(table)).then((result) => sendQuery(query.query,res,true) )
+	  } catch(e) { res.send(e) }
   } else {
 	  sendQuery(query.query, res);
   }
