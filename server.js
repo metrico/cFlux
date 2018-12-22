@@ -100,7 +100,15 @@ var sendQuery = async function(query,res,update){
   clickhouse.query(query, {syncParser: true}, function (err, data) {
         if (err) {
                 console.log('QUERY ERR',err);
-                res.sendStatus(500);
+		var parsed = err.Error.match(/^Table\s(.*) doesn/g);
+               console.log('Create Table and retry!',parsed);
+               if (parsed[1] !== 'undefined'){
+                 try {
+                       clickhouse.querying(createTable(parsed[1])).then((result) => sendQuery(query.query,res,true) )
+                       res.sendStatus(200);
+                 } catch(e) { res.sendStatus(500) }
+               } 
+               res.sendStatus(500);
         } else {
                 if (debug) console.log(data);
                 res.sendStatus(200);
