@@ -179,7 +179,7 @@ app.all('/query', function(req, res) {
 		  	var tmp = new ClickHouse(clickhouse_options);
 			var stream = tmp.query("SELECT DISTINCT m FROM "+parsed[2]+" ARRAY JOIN m");
 			stream.on ('data', function (row) {
-			  response.push ([row[0],"float"]);
+			  	response.push ([row[0],"float"]);
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
@@ -187,7 +187,7 @@ app.all('/query', function(req, res) {
 			});
 			stream.on ('end', function () {
 				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["fieldKey","fieldType"],"values":response }]}]};
-				console.log(JSON.stringify(results));
+				// console.log(JSON.stringify(results));
 				res.send(results);
 			});
 
@@ -204,16 +204,16 @@ app.all('/query', function(req, res) {
 			clickhouse_options.queryOptions.database = req.query.db;
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
-			var stream = tmp.query("SELECT DISTINCT t FROM "+parsed[2]+" ARRAY JOIN t");
+			var stream = tmp.query("SELECT uniq_pair.1 AS k, uniq_pair.2 AS v FROM (SELECT groupUniqArray((t, tv)) AS uniq_pair FROM "+parsed[2]+" ARRAY JOIN t, tv) ARRAY JOIN uniq_pair");
 			stream.on ('data', function (row) {
-			  response.push ([row[0],"float"]);
+			  response.push ([row[0],row[1]]);
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
 				console.log('GET DATA ERR',err);
 			});
 			stream.on ('end', function () {
-				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["key","value"],"values":[] }]}]}
+				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["key","value"],"values":results }]}]}
 				console.log(JSON.stringify(results));
 				res.send(results);
 			});
@@ -260,9 +260,33 @@ app.all('/query', function(req, res) {
 			res.send(results);
 		});
 
+          } else if (rawQuery.startsWith('SELECT')) {
+                var parsed = ifqlparser.parse(rawQuery);
+		console.log('OH OH SELECT!',parsed);
+		var settings = parsed.parsed.table_exp.from.table_refs[0];
+		var where = parsed.parsed.table_exp.where;
+		var response = [];
+		var sample = "SELECT entity, dt, ts, arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name,  metric.2 AS metric_value  FROM "+settings.table+" WHERE dt BETWEEN NOW()-3000 AND NOW()"
+		clickhouse_options.queryOptions.database = settings.database.replace('.autogen','');
+	  	// Re-Initialize Clickhouse Client
+	  	var tmp = new ClickHouse(clickhouse_options);
+		var stream = tmp.query(sample);
+		stream.on ('data', function (row) {
+		  console.log(row)
+		  response.push ([row[2]/1000000,row[5]]);
+		});
+		stream.on ('error', function (err) {
+			// TODO: handler error
+			console.log('GET DATA ERR',err);
+		});
+		stream.on ('end', function () {
+			var results = {"results":[{"statement_id":0,"series":[{"name": settings.table ,"columns":["time",parsed.returnColumns[0].name], "values": response } ]} ]};
+			// console.log(JSON.stringify(results));
+			res.send(results);
+		});
           } else {
                 var parsed = ifqlparser.parse(rawQuery);
-                res.send(parsed);
+		console.log('UNSUPPORTED',parsed);
           }
   } catch(e) {
           console.log(e);
