@@ -6,6 +6,7 @@
  */
 
 var debug = process.env.DEBUG || false;
+var tsDivide = process.env.TSDIVIDE || 1000000000;
 
 const ifqlparser = require('ifql-parser')();
 
@@ -21,8 +22,8 @@ const clickhouse_options = {
 var clickhouse = new ClickHouse(clickhouse_options);
 
 var createTable = function(tableName){
-	if (!tableName || tables[tableName]) return;
-	var query = "CREATE TABLE IF NOT EXISTS "+tableName+" (entity String, ts UInt64, m Array(String), mv Array(Float32), t Array(String), tv Array(String), d Date MATERIALIZED toDate(round(ts/1000)), dt DateTime MATERIALIZED toDateTime(round(ts/1000)) ) ENGINE = MergeTree(d, entity, 8192)";
+	if (!tableName || tables.indexOf(tableName) === -1) return;
+	var query = "CREATE TABLE IF NOT EXISTS "+tableName+" (entity String, ts UInt64, m Array(String), mv Array(Float32), t Array(String), tv Array(String), d Date MATERIALIZED toDate(round(ts/"+tsDivide+")), dt DateTime MATERIALIZED toDateTime(round(ts/"+tsDivide+")) ) ENGINE = MergeTree(d, entity, 8192)";
 	return query;
 };
 
@@ -114,15 +115,19 @@ app.post('/query', function(req, res) {
   try {
           var rawQuery =  unescape( req.rawBody.replace(/^q=/,'').replace(/\+/g,' ') );
           if (rawQuery.startsWith('CREATE DATABASE')) {
+		  res.sendStatus(200);
+		  /*
                   clickhouse.querying(rawQuery)
 			  .then((result) => { console.log(result.data) } )
 			  .then((result) => { res.sendStatus(200) } )
+		  */
           } else {
-                var parsed   =  ifqlparser.parse(rawQuery);
+                var parsed = ifqlparser.parse(rawQuery);
                 res.send(parsed);
           }
   } catch(e) {
           console.log(e);
+	  getTables();
           res.sendStatus(500);
   }
 	
