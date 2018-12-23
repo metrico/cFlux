@@ -68,7 +68,7 @@ var getTables = function(){
                 if (parsed && parsed[1]){
                    console.log('Create Table!',parsed);
                    try {
-                       clickhouse.querying(createTable(parsed[1])).then((result) => console.log(result) ) )
+                       clickhouse.querying(createTable(parsed[1])).then((result) => console.log(result) )
                        if(res) res.sendStatus(200);
                    } catch(e) { if (res) res.sendStatus(500) }
 
