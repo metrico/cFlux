@@ -37,4 +37,4 @@ The `/write` endpoint expects HTTP POST data using the InfluxDB line protocol:
       -X POST 'http://localhost:8686/write?db=mystats'
 ```
 
-![image](https://user-images.githubusercontent.com/1423657/50379244-d7d34200-0644-11e9-9e99-6cf7e90d361b.png)
+![ezgif com-optimize 12](https://user-images.githubusercontent.com/1423657/50385420-950d7a80-06d5-11e9-9bff-7be602b89a84.gif)
