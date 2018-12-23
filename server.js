@@ -112,7 +112,6 @@ app.use(rawBody);
 app.post('/write', function(req, res) {
   if (debug) console.log('RAW: ' , req.rawBody);
   if (debug) console.log('QUERY: ', req.query);
-	if (req.query.includes('GROUP BY time')) req.query = req.query.replace(/GROUP BY time.*\)/, "");
 
   // Use DB from Query, if any
   if (req.query.db) {
@@ -180,6 +179,8 @@ var sendQuery = async function(query,res,update){
 var databases = [];
 app.all('/query', function(req, res) {
   if (debug) console.log('QUERY:', req.query.q, req.rawBody);
+	if (req.query.q && req.query.q.includes('GROUP BY time')) req.query.q = req.query.q.replace(/GROUP BY time.*\)/, "");
+
   var rawQuery;
   try {
 	  if(req.query.q) { rawQuery = req.query.q; }
