@@ -8,6 +8,7 @@ Experimental, unoptimized InfluxDB to Clickhouse Gateway prototype for Timeserie
 - [x] implement `/write`
   - [x] line protocol parser
   - [x] clickhouse insert statement
+  - [x] clickhouse bulk inserts w/ LRU
 - [ ] implement `/query`
   - [x] ifql protocol parser
   - [x] SHOW DATABASES
