@@ -1,6 +1,6 @@
 {
   "name": "nonFlux",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "InfluxDB to Clickhouse Gateway for Timeseries",
   "main": "server.js",
   "scripts": {
@@ -19,8 +19,9 @@
   "homepage": "https://github.com/lmangani/clickflux#readme",
   "dependencies": {
     "@apla/clickhouse": "^1.5.3",
-    "clickline": "^1.0.4",
+    "clickline": "^1.0.7",
     "express": "^4.16.4",
-    "ifql-parser": "^0.1.6"
+    "ifql-parser": "^0.1.6",
+    "record-cache": "^1.1.0"
   }
 }

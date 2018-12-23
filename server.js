@@ -8,8 +8,8 @@
 var debug = process.env.DEBUG || false;
 var tsDivide = process.env.TSDIVIDE || 1000000000;
 
+/* DB Helper */
 const ifqlparser = require('ifql-parser')();
-
 const clickline = require('clickline');
 const ClickHouse = require('@apla/clickhouse');
 
@@ -21,6 +21,30 @@ const clickhouse_options = {
 
 var clickhouse = new ClickHouse(clickhouse_options);
 
+
+/* Cache Helper */
+var recordCache = require('record-cache');
+
+var onStale = function(data){
+ 	for (let [key, value] of data.records.entries()) {
+	     var statement = "INSERT INTO "+key+"(entity,ts,m,mv,t,tv)";
+	     var clickStream = clickhouse.query (statement, {inputFormat: 'TSV'}, function (err) {
+	       console.log ('Insert complete for',key);
+	     });
+ 	     value.list.forEach(function(row){
+		clickStream.write ( row.record );
+             });
+	     clickStream.end ();
+        }
+}
+
+var cache = recordCache({
+  maxSize: 5000,
+  maxAge: 1000,
+  onStale: onStale
+})
+
+/* Function Helpers */
 var createTable = function(tableName){
 	if (!tableName) return;
 	var query = "CREATE TABLE IF NOT EXISTS "+tableName+" (entity String, ts UInt64, m Array(String), mv Array(Float32), t Array(String), tv Array(String), d Date MATERIALIZED toDate(round(ts/"+tsDivide+")), dt DateTime MATERIALIZED toDateTime(round(ts/"+tsDivide+")) ) ENGINE = MergeTree(d, entity, 8192)";
@@ -46,6 +70,8 @@ var getTables = function(){
 }
 getTables();
 
+/* HTTP Helper */
+
 var express = require('express')
   , http = require('http')
   , path = require('path')
@@ -66,6 +92,8 @@ function rawBody(req, res, next) {
 
 app.set('port', process.env.PORT || 8686);
 app.use(rawBody);
+
+/* Write Handler */
 
 app.post('/write', function(req, res) {
   if (debug) console.log('RAW: ' , req.rawBody);
@@ -94,6 +122,8 @@ app.post('/write', function(req, res) {
 	  } else {
 		  sendQuery(query.query);
 	  }
+
+	  cache.add(query.parsed.measurement, query.values);	
   });
   res.sendStatus(200);
 });
@@ -103,6 +133,8 @@ http.createServer(app).listen(app.get('port'), function(){
 });
 
 var sendQuery = async function(query,res,update){
+  if (update) getTables();
+  return;
   if (query.includes('undefined')) return;
   if (debug) console.log('SHIPPING QUERY...',query,res,update);
   clickhouse.query(query, {syncParser: true}, function (err, data) {
@@ -125,6 +157,8 @@ var sendQuery = async function(query,res,update){
 	if (update) getTables();
   });
 };
+
+/* Query Handlers */
 
 var databases = [];
 app.all('/query', function(req, res) {
