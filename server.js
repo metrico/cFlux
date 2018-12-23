@@ -30,7 +30,7 @@ var onStale = function(data){
 	     var statement = "INSERT INTO "+key+"(entity,ts,m,mv,t,tv)";
 	     var clickStream = clickhouse.query (statement, {inputFormat: 'TSV'}, function (err) {
 	       if (err) console.log('ERROR BULK',err);
-	       console.log ('Insert complete for',key);
+	       if (debug) console.log ('Insert complete for',key);
 	     });
  	     value.list.forEach(function(row){
 		if (!row.record) return;
@@ -113,7 +113,6 @@ app.post('/write', function(req, res) {
   var queries = req.rawBody.split("\n");
   queries.forEach(function(rawBody){
 	  if (!rawBody || rawBody == '') return;
-	  console.log(rawBody[0]);
 	  var query = clickline(rawBody);
 	  if (query.parsed.measurement) table = query.parsed.measurement;
 	  if (tables.indexOf(table) === -1) { 
@@ -126,7 +125,6 @@ app.post('/write', function(req, res) {
 	  } else {
 		  sendQuery(query.query);
 	  }
-	  console.log(query.values)
 	  cache.add(query.parsed.measurement, query.values);	
   });
   res.sendStatus(200);
@@ -297,11 +295,25 @@ app.all('/query', function(req, res) {
 
           } else if (rawQuery.startsWith('SELECT')) {
                 var parsed = ifqlparser.parse(rawQuery);
-		console.log('OH OH SELECT!',parsed);
+		if (debug) console.log('OH OH SELECT!',parsed);
 		var settings = parsed.parsed.table_exp.from.table_refs[0];
 		var where = parsed.parsed.table_exp.where;
+		var from_ts = where.condition.left.value == 'timerr' ? "toDateTime(round("+where.condition.right.left.name.from_timestamp+"*"+tsDivide+"))" : 'NOW()-300';
+		var to_ts = where.condition.left.value == 'timerr' ? "toDateTime(round("+where.condition.right.left.name.to_timestamp+"*"+tsDivide+"))" : 'NOW()';
+		console.log('TIME',from_ts,to_ts);
 		var response = [];
-		var sample = "SELECT entity, dt, ts, arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name,  metric.2 AS metric_value FROM "+settings.table+" WHERE dt BETWEEN NOW()-3000 AND NOW()"
+		var sample = "SELECT entity, dt, ts, arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name, metric.2 AS metric_value FROM "+settings.table
+				+ " WHERE dt BETWEEN "+from_ts+" AND "+to_ts;
+		if(parsed.returnColumns[0].sourceColumns[0].value) {
+			var subq = []
+			parsed.returnColumns.forEach(function(source){
+				if (source.sourceColumns[0]){
+				   subq.push("metric_name = '" + source.sourceColumns[0].value+"'");
+				}
+			}) 
+			sample += " AND ("+subq.join(' OR ')+")";
+		}
+		console.log('QUERY',sample);
 		clickhouse_options.queryOptions.database = settings.db || settings.database.replace('.autogen','');
 	  	// Re-Initialize Clickhouse Client
 	  	var tmp = new ClickHouse(clickhouse_options);
