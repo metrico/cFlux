@@ -179,7 +179,8 @@ var sendQuery = async function(query,res,update){
 var databases = [];
 app.all('/query', function(req, res) {
   if (debug) console.log('QUERY:', req.query.q, req.rawBody);
-	if (req.query.q && req.query.q.includes('GROUP BY time')) req.query.q = req.query.q.replace(/GROUP BY time.*\)/, "");
+	if (req.query.q && req.query.q.includes('GROUP BY ')) req.query.q = req.query.q.replace(/GROUP BY time.*\)/, " FILL(null)");
+	if (req.rawBody && req.rawBody.includes('GROUP BY ')) req.rawBody = req.rawBody.replace(/GROUP BY time.*\)/, " FILL(null)");
 
   var rawQuery;
   try {
