@@ -186,14 +186,17 @@ app.all('/query', function(req, res) {
 
           if (rawQuery.startsWith('CREATE DATABASE')) {
 
+		console.log('TRYING... ',req.query);
 		if (req.query.db) {
 			 var db = req.query.db.replace(".","");
 	                 console.log('Create Database!',db);
 	                 try {
 	                       clickhouse.querying('CREATE DATABASE IF NOT EXISTS '+db).then((result) => console.log(result) )
 	                       if(res) res.sendStatus(200);
-	                 } catch(e) { if (res) res.sendStatus(500) }
+	                 } catch(e) { if (res) res.sendStatus(200) }
 
+		} else {
+			res.sendStatus(200);
 		}
 
           } else if (rawQuery.startsWith('SHOW RETENTION')) {
@@ -222,7 +225,7 @@ app.all('/query', function(req, res) {
 		        }
 		      ]
 		    });
-			
+
 		});
 		res.send(data);
 
@@ -309,6 +312,7 @@ app.all('/query', function(req, res) {
 		});
 		stream.on ('end', function () {
 			databases = response;
+			if (debug) console.log(databases)
 			var results = {"results":[{"statement_id":0,"series":[{"name":"databases","columns":["name"], "values": response } ]} ]};
 			res.send(results);
 		});
