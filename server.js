@@ -29,9 +29,12 @@ var onStale = function(data){
  	for (let [key, value] of data.records.entries()) {
 	     var statement = "INSERT INTO "+key+"(entity,ts,m,mv,t,tv)";
 	     var clickStream = clickhouse.query (statement, {inputFormat: 'TSV'}, function (err) {
+	       if (err) console.log('ERROR BULK',err);
 	       console.log ('Insert complete for',key);
 	     });
  	     value.list.forEach(function(row){
+		if (!row.record) return;
+		// console.log(row.record);
 		clickStream.write ( row.record );
              });
 	     clickStream.end ();
@@ -110,6 +113,7 @@ app.post('/write', function(req, res) {
   var queries = req.rawBody.split("\n");
   queries.forEach(function(rawBody){
 	  if (!rawBody || rawBody == '') return;
+	  console.log(rawBody[0]);
 	  var query = clickline(rawBody);
 	  if (query.parsed.measurement) table = query.parsed.measurement;
 	  if (tables.indexOf(table) === -1) { 
@@ -122,7 +126,7 @@ app.post('/write', function(req, res) {
 	  } else {
 		  sendQuery(query.query);
 	  }
-
+	  console.log(query.values)
 	  cache.add(query.parsed.measurement, query.values);	
   });
   res.sendStatus(200);
@@ -135,6 +139,9 @@ http.createServer(app).listen(app.get('port'), function(){
 var sendQuery = async function(query,res,update){
   if (update) getTables();
   return;
+
+  // to be decommissioned?
+
   if (query.includes('undefined')) return;
   if (debug) console.log('SHIPPING QUERY...',query,res,update);
   clickhouse.query(query, {syncParser: true}, function (err, data) {
@@ -295,7 +302,6 @@ app.all('/query', function(req, res) {
 		var where = parsed.parsed.table_exp.where;
 		var response = [];
 		var sample = "SELECT entity, dt, ts, arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name,  metric.2 AS metric_value FROM "+settings.table+" WHERE dt BETWEEN NOW()-3000 AND NOW()"
-		console.log(settings)
 		clickhouse_options.queryOptions.database = settings.db || settings.database.replace('.autogen','');
 	  	// Re-Initialize Clickhouse Client
 	  	var tmp = new ClickHouse(clickhouse_options);
