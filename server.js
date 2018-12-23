@@ -112,6 +112,7 @@ app.use(rawBody);
 app.post('/write', function(req, res) {
   if (debug) console.log('RAW: ' , req.rawBody);
   if (debug) console.log('QUERY: ', req.query);
+	if (req.query.includes('GROUP BY time')) req.query = req.query.replace(/GROUP BY time.*\)/, "");
 
   // Use DB from Query, if any
   if (req.query.db) {
@@ -318,8 +319,8 @@ app.all('/query', function(req, res) {
 		});
 
           } else if (rawQuery.startsWith('SELECT')) {
-		var cleanQuery = rawQuery.replace(/GROUP BY time.*\)/, "");
-                var parsed = ifqlparser.parse(cleanQuery);
+		//var cleanQuery = rawQuery.replace(/GROUP BY time.*\)/, "");
+                var parsed = ifqlparser.parse(rawQuery);
 		if (debug) console.log('OH OH SELECT!',JSON.stringify(parsed));
 		var settings = parsed.parsed.table_exp.from.table_refs[0];
 		var where = parsed.parsed.table_exp.where;
