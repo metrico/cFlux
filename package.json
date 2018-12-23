@@ -1,6 +1,6 @@
 {
   "name": "nonFlux",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "InfluxDB to Clickhouse Gateway for Timeseries",
   "main": "server.js",
   "scripts": {
@@ -9,19 +9,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/lmangani/clickflux.git"
+    "url": "git+ssh://git@github.com/lmangani/nonflux.git"
   },
   "author": "lorenzo.mangani@gmail.com",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/lmangani/clickflux/issues"
+    "url": "https://github.com/lmangani/nonflux/issues"
   },
-  "homepage": "https://github.com/lmangani/clickflux#readme",
+  "homepage": "https://github.com/lmangani/nonflux#readme",
   "dependencies": {
     "@apla/clickhouse": "^1.5.3",
-    "clickline": "^1.0.7",
+    "clickline": "^1.0.8",
     "express": "^4.16.4",
-    "ifql-parser": "^0.1.6",
+    "ifql-parser": "^0.1.9",
     "record-cache": "^1.1.0"
   }
 }

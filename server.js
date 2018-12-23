@@ -294,13 +294,13 @@ app.all('/query', function(req, res) {
 		});
 
           } else if (rawQuery.startsWith('SELECT')) {
-                var parsed = ifqlparser.parse(rawQuery);
-		if (debug) console.log('OH OH SELECT!',parsed);
+		var cleanQuery = rawQuery.replace(/GROUP BY time.*\)/, "");
+                var parsed = ifqlparser.parse(cleanQuery);
+		if (debug) console.log('OH OH SELECT!',JSON.stringify(parsed));
 		var settings = parsed.parsed.table_exp.from.table_refs[0];
 		var where = parsed.parsed.table_exp.where;
-		var from_ts = where.condition.left.value == 'timerr' ? "toDateTime(round("+where.condition.right.left.name.from_timestamp+"*"+tsDivide+"))" : 'NOW()-300';
-		var to_ts = where.condition.left.value == 'timerr' ? "toDateTime(round("+where.condition.right.left.name.to_timestamp+"*"+tsDivide+"))" : 'NOW()';
-		console.log('TIME',from_ts,to_ts);
+		var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'NOW()-300';
+		var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'NOW()';
 		var response = [];
 		var sample = "SELECT entity, dt, ts, arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name, metric.2 AS metric_value FROM "+settings.table
 				+ " WHERE dt BETWEEN "+from_ts+" AND "+to_ts;
@@ -313,7 +313,7 @@ app.all('/query', function(req, res) {
 			}) 
 			sample += " AND ("+subq.join(' OR ')+")";
 		}
-		console.log('QUERY',sample);
+		if (debug) console.log('QUERY',sample);
 		clickhouse_options.queryOptions.database = settings.db || settings.database.replace('.autogen','');
 
 		var metrics = {};
