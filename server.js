@@ -339,8 +339,10 @@ app.all('/query', function(req, res) {
 			res.send(results);
 		});
           } else {
-                var parsed = ifqlparser.parse(rawQuery);
-		console.log('UNSUPPORTED',parsed);
+		try {
+	                //var parsed = ifqlparser.parse(rawQuery);
+			console.log('UNSUPPORTED',rawQuery);
+		} catch(e) { console.log(e) }
           }
   } catch(e) {
           console.log(e);
