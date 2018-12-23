@@ -64,6 +64,17 @@ var getTables = function(){
 	stream.on ('error', function (err) {
 		// TODO: handler error
 		console.log('GET TABLES ERR',err);
+		var parsed = err.toString().match(/Table\s(.*) doesn/);
+                if (parsed && parsed[1]){
+                   console.log('Create Table!',parsed);
+                   try {
+                       clickhouse.querying(createTable(parsed[1])).then((result) => console.log(result) ) )
+                       if(res) res.sendStatus(200);
+                   } catch(e) { if (res) res.sendStatus(500) }
+
+                } else {
+                        return;
+                }
 		return false;
 	});
 	stream.on ('end', function () {
@@ -174,7 +185,16 @@ app.all('/query', function(req, res) {
           else if(req.rawBody) { rawQuery =  unescape( req.rawBody.replace(/^q=/,'').replace(/\+/g,' ') ); }
 
           if (rawQuery.startsWith('CREATE DATABASE')) {
-		  res.sendStatus(200);
+
+		if (req.query.db) {
+			 var db = req.query.db.replace(".","");
+	                 console.log('Create Database!',db);
+	                 try {
+	                       clickhouse.querying('CREATE DATABASE IF NOT EXISTS '+db).then((result) => console.log(result) )
+	                       if(res) res.sendStatus(200);
+	                 } catch(e) { if (res) res.sendStatus(500) }
+
+		}
 
           } else if (rawQuery.startsWith('SHOW RETENTION')) {
 		var data = { "results": [] };
@@ -354,7 +374,7 @@ app.all('/query', function(req, res) {
 
 /* INFLUXDB PING EMULATION */
 app.get('/ping', (req, res) => {
-	if (debug) console.log('PING req', req);
+	if (debug) console.log('PING req!');
 	clickhouse.pinging().then((result) => { res.sendStatus(204) } )
 })
 
