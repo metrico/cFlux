@@ -315,10 +315,16 @@ app.all('/query', function(req, res) {
 		}
 		console.log('QUERY',sample);
 		clickhouse_options.queryOptions.database = settings.db || settings.database.replace('.autogen','');
+
+		var metrics = {};
+		var template = {"statement_id":0,"series":[{"name": settings.table ,"columns":[] }]};
+
 	  	// Re-Initialize Clickhouse Client
 	  	var tmp = new ClickHouse(clickhouse_options);
 		var stream = tmp.query(sample);
 		stream.on ('data', function (row) {
+		  if(!metrics[row[4]]) metrics[row[4]] = [];
+		  metrics[row[4]].push ([row[2]/1000000,row[5]]);
 		  response.push ([row[2]/1000000,row[5]]);
 		});
 		stream.on ('error', function (err) {
@@ -326,7 +332,10 @@ app.all('/query', function(req, res) {
 			console.log('GET DATA ERR',err);
 		});
 		stream.on ('end', function () {
-			var results = {"results":[{"statement_id":0,"series":[{"name": settings.table ,"columns":["time",parsed.returnColumns[0].name], "values": response } ]} ]};
+			var results = {"results": []};
+			Object.keys(metrics).forEach(function(key,i) {
+			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns":["time",parsed.returnColumns[0].name], "values": metrics[key] }]} );
+			});
 			res.send(results);
 		});
           } else {
