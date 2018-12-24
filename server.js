@@ -193,10 +193,10 @@ app.all('/query', function(req, res) {
           if (rawQuery.startsWith('CREATE DATABASE')) {
 
 		console.log('TRYING... ',req.query);
-		if (req.query.db) {
+		if (req.query.db && req.query.db != "") {
 			var db = req.query.db.replace(".","");
-		} else {
-			var db = req.query.match(/CREATE DATABASE \"(.*)\"\s?/)[1];	
+		} else if (req.query.q) {
+			var db = req.query.q.match(/CREATE DATABASE \"(.*)\"\s?/)[1];	
 		}
 		if (db) {
 	                 console.log('Create Database!',db);
