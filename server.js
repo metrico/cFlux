@@ -269,8 +269,7 @@ app.all('/query', function(req, res) {
 
           } else if (rawQuery.startsWith('SHOW TAG KEYS')) {
 
-
-		var parsed = rawQuery.match(/SHOW TAG KEYS FROM "(.*)"."(.*)"/);
+		var parsed = rawQuery.match(/SHOW TAG KEYS FROM \"(.*)\"\.\"(.*)\"\s?/);
 		if (parsed && parsed[1] && parsed[2]){
 			if (debug) console.log('get fields for',parsed[2],req.query.db);
 			var response = [];
@@ -287,6 +286,32 @@ app.all('/query', function(req, res) {
 			});
 			stream.on ('end', function () {
 				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["key","value"],"values":results }]}]}
+				res.send(results);
+			});
+
+		}
+
+          } else if (rawQuery.startsWith('SHOW TAG VALUES FROM')) {
+
+		var parsed = rawQuery.match(/SHOW TAG VALUES FROM \"(.*)\"\.\"(.*)\"\s?/);
+		if (parsed && parsed[1] && parsed[2]){
+			if (debug) console.log('get tag values for',parsed[2],req.query.db);
+			var response = [];
+			clickhouse_options.queryOptions.database = req.query.db;
+		  	// Re-Initialize Clickhouse Client
+		  	var tmp = new ClickHouse(clickhouse_options);
+			var stream = tmp.query("SELECT uniq_pair.1 AS k, uniq_pair.2 AS v FROM (SELECT groupUniqArray((t, tv)) AS uniq_pair FROM "+parsed[2]+" ARRAY JOIN t, tv) ARRAY JOIN uniq_pair");
+			stream.on ('data', function (row) {
+			  	//response.push ([row[0],row[1]]);
+				response.push( { name: 'test', columns: ['key','value'], values: [ ['test','value']  ] } );
+			});
+			stream.on ('error', function (err) {
+				// TODO: handler error
+				console.error('GET DATA ERR',err);
+			});
+			stream.on ('end', function () {
+				console.log(response);
+				var results = {"results":[{"statement_id":0,"series":response }]};
 				res.send(results);
 			});
 
