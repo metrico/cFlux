@@ -8,7 +8,7 @@ ENV BUILD 703021
 # RUN git clone https://github.com/lmangani/nonFlux /app
 COPY . /app
 WORKDIR /app
-RUN npm install 
+RUN npm install
 
 # Expose Ports
 EXPOSE 8686

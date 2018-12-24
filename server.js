@@ -21,6 +21,9 @@ const clickhouse_options = {
 
 var clickhouse = new ClickHouse(clickhouse_options);
 
+/* Response Helpers */
+
+var resp_empty = {"results":[{"statement_id":0}]};
 
 /* Cache Helper */
 var recordCache = require('record-cache');
@@ -69,7 +72,7 @@ var getTables = function(){
                    console.log('Create Table!',parsed);
                    try {
                        clickhouse.querying(createTable(parsed[1])).then((result) => console.log(result) )
-                       if(res) res.sendStatus(200);
+                       if(res) res.sendStatus(resp_empty);
                    } catch(e) { if (res) res.sendStatus(500) }
 
                 } else {
@@ -190,15 +193,23 @@ app.all('/query', function(req, res) {
           if (rawQuery.startsWith('CREATE DATABASE')) {
 
 		console.log('TRYING... ',req.query);
-		if (req.query.db) {
-			 var db = req.query.db.replace(".","");
+		if (req.query.db && req.query.db != "") {
+			var db = req.query.db.replace(".","");
+		} else if (req.query.q) {
+			var db = req.query.q.match(/CREATE DATABASE \"?([^\s]*)\"?\s?/)[1] || false;	
+		}
+		if (db) {
 	                 console.log('Create Database!',db);
 	                 try {
-	                       clickhouse.querying('CREATE DATABASE IF NOT EXISTS '+db).then((result) => console.log(result) )
-	                       if(res) res.sendStatus(200);
-	                 } catch(e) { if (res) res.sendStatus(200) }
+	                       clickhouse.querying('CREATE DATABASE "'+db+'"').then((result) => console.log(result) )
+	                       if(res) res.send(resp_empty);
+	                 } catch(e) { 
+				console.error(e);
+				if (res) res.sendStatus(500) 
+			 }
 
 		} else {
+			console.log('No Database Name!');
 			res.sendStatus(200);
 		}
 
@@ -247,7 +258,7 @@ app.all('/query', function(req, res) {
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
-				console.log('GET DATA ERR',err);
+				console.error('GET DATA ERR',err);
 			});
 			stream.on ('end', function () {
 				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["fieldKey","fieldType"],"values":response }]}]};
@@ -272,7 +283,7 @@ app.all('/query', function(req, res) {
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
-				console.log('GET DATA ERR',err);
+				console.error('GET DATA ERR',err);
 			});
 			stream.on ('end', function () {
 				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["key","value"],"values":results }]}]}
@@ -294,7 +305,7 @@ app.all('/query', function(req, res) {
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
-				console.log('GET DATA ERR',err);
+				console.error('GET DATA ERR',err);
 			});
 			stream.on ('end', function () {
 				var results = {"results":[{"statement_id":0,"series":[{"name":"measurements","columns":["name"],"values":response }]}]}
@@ -311,7 +322,7 @@ app.all('/query', function(req, res) {
 		});
 		stream.on ('error', function (err) {
 			// TODO: handler error
-			console.log('GET DATA ERR',err);
+			console.error('GET DATA ERR',err);
 		});
 		stream.on ('end', function () {
 			databases = response;
@@ -356,7 +367,7 @@ app.all('/query', function(req, res) {
 		});
 		stream.on ('error', function (err) {
 			// TODO: handler error
-			console.log('GET DATA ERR',err);
+			console.error('GET DATA ERR',err);
 		});
 		stream.on ('end', function () {
 			var results = {"results": []};
@@ -381,12 +392,14 @@ app.all('/query', function(req, res) {
 		try {
 	                //var parsed = ifqlparser.parse(rawQuery);
 			console.log('UNSUPPORTED',rawQuery);
-		} catch(e) { console.log(e) }
+			res.send(resp_empty);
+			
+		} catch(e) { console.error('UNSUPPORTED',e) }
           }
   } catch(e) {
           console.log(e);
 	  getTables();
-          res.sendStatus(500);
+          res.send(resp_empty);
   }
 	
 });
@@ -398,5 +411,6 @@ app.get('/ping', (req, res) => {
 })
 
 process.on('unhandledRejection', function(err, promise) {
-    console.error('Unhandled rejection (promise: ', promise, ', reason: ', err, ').');
+    console.error('Error:',err);
+    //console.error('Unhandled rejection (promise: ', promise, ', reason: ', err, ').');
 });
