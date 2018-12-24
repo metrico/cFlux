@@ -21,6 +21,9 @@ const clickhouse_options = {
 
 var clickhouse = new ClickHouse(clickhouse_options);
 
+/* Response Helpers */
+
+var resp_empty = {"results":[{"statement_id":0}]};
 
 /* Cache Helper */
 var recordCache = require('record-cache');
@@ -191,14 +194,22 @@ app.all('/query', function(req, res) {
 
 		console.log('TRYING... ',req.query);
 		if (req.query.db) {
-			 var db = req.query.db.replace(".","");
+			var db = req.query.db.replace(".","");
+		} else {
+			var db = req.query.match(/CREATE DATABASE \"(.*)\"\s?/)[1];	
+		}
+		if (db) {
 	                 console.log('Create Database!',db);
 	                 try {
-	                       clickhouse.querying('CREATE DATABASE IF NOT EXISTS '+db).then((result) => console.log(result) )
-	                       if(res) res.sendStatus(200);
-	                 } catch(e) { if (res) res.sendStatus(200) }
+	                       clickhouse.querying('CREATE DATABASE "'+db+'"').then((result) => console.log(result) )
+	                       if(res) res.send(resp_empty);
+	                 } catch(e) { 
+				console.log(e);
+				if (res) res.sendStatus(500) 
+			 }
 
 		} else {
+			console.log('No Database Name!');
 			res.sendStatus(200);
 		}
 
