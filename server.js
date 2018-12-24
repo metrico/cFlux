@@ -302,8 +302,7 @@ app.all('/query', function(req, res) {
 		  	var tmp = new ClickHouse(clickhouse_options);
 			var stream = tmp.query("SELECT uniq_pair.1 AS k, uniq_pair.2 AS v FROM (SELECT groupUniqArray((t, tv)) AS uniq_pair FROM "+parsed[2]+" ARRAY JOIN t, tv) ARRAY JOIN uniq_pair");
 			stream.on ('data', function (row) {
-			  	//response.push ([row[0],row[1]]);
-				response.push( { name: 'test', columns: ['key','value'], values: [ ['test','value']  ] } );
+			  	response.push( { name: row[0], columns: ['key','value'], values: [ [row[0], row[1] ] ] } );
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
