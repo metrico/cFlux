@@ -196,7 +196,7 @@ app.all('/query', function(req, res) {
 		if (req.query.db && req.query.db != "") {
 			var db = req.query.db.replace(".","");
 		} else if (req.query.q) {
-			var db = req.query.q.match(/CREATE DATABASE \"(.*)\"\s?/)[1];	
+			var db = req.query.q.match(/CREATE DATABASE \"?([^\s]*)\"?\s?/)[1] || false;	
 		}
 		if (db) {
 	                 console.log('Create Database!',db);
