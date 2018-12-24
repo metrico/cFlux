@@ -365,6 +365,18 @@ app.all('/query', function(req, res) {
 			});
 			res.send(results);
 		});
+
+          } else if (rawQuery.startsWith('SHOW SUBSCRIPTIONS')) {
+
+		var mock = {
+		    "results": [
+		        {
+		            "statement_id": 0
+		        }
+		    ]
+		};
+		res.send(mock);
+
           } else {
 		try {
 	                //var parsed = ifqlparser.parse(rawQuery);
