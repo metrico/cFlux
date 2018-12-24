@@ -309,7 +309,6 @@ app.all('/query', function(req, res) {
 				console.error('GET DATA ERR',err);
 			});
 			stream.on ('end', function () {
-				console.log(response);
 				var results = {"results":[{"statement_id":0,"series":response }]};
 				res.send(results);
 			});
