@@ -16,13 +16,14 @@ Experimental, unoptimized InfluxDB to Clickhouse Gateway prototype for Timeserie
   - [x] SHOW DATABASES
   - [x] SHOW MEASUREMENTS
   - [x] SHOW RETENTION POLICIES (fake)
-  - [ ] SHOW TAG KEYS
-  - [ ] SHOW TAG VALUES
+  - [x] SHOW TAG KEYS
+  - [x] SHOW TAG VALUES
   - [x] SHOW FIELDS KEYS
   - [ ] SELECT
     - [x] Fields
     - [ ] Tags
     - [x] Timerange _(now)_
+    - [ ] Group By
 
 ### Usage
 ##### Start Server
@@ -44,4 +45,4 @@ The `/write` endpoint expects HTTP POST data using the InfluxDB line protocol:
       -X POST 'http://localhost:8686/write?db=mystats'
 ```
 
-![ezgif com-optimize 13](https://user-images.githubusercontent.com/1423657/50386450-e114eb00-06e6-11e9-986b-aa6fd0ad9026.gif)
+![ezgif com-optimize 14](https://user-images.githubusercontent.com/1423657/50405673-8f3c9580-07b8-11e9-8f41-7577246488d6.gif)
