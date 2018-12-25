@@ -361,8 +361,7 @@ app.all('/query', function(req, res) {
           } else if (rawQuery.startsWith('SELECT')) {
 
 		// Drop Limit, temporary measure!
-		rawQuery = rawQuery.replace(/LIMIT .*\)/, "");
-
+		rawQuery = rawQuery.replace("LIMIT 1000", "");
 		if (debug||exception) console.log('OH OH SELECT!',rawQuery);
                 var parsed = ifqlparser.parse(rawQuery);
 		if (debug||exception) console.log('OH OH PARSED!',JSON.stringify(parsed));
