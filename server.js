@@ -359,7 +359,10 @@ app.all('/query', function(req, res) {
 		});
 
           } else if (rawQuery.startsWith('SELECT')) {
-		//var cleanQuery = rawQuery.replace(/GROUP BY time.*\)/, "");
+
+		// Drop Limit, temporary measure!
+		rawQuery = rawQuery.replace(/LIMIT .*\)/, "");
+
 		if (debug||exception) console.log('OH OH SELECT!',rawQuery);
                 var parsed = ifqlparser.parse(rawQuery);
 		if (debug||exception) console.log('OH OH PARSED!',JSON.stringify(parsed));
@@ -369,7 +372,8 @@ app.all('/query', function(req, res) {
 		var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'NOW()';
 		var response = [];
 		var sample = "SELECT entity, dt, ts,"
-				+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name, metric.2 AS metric_value "
+				+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name, metric.2 AS metric_value, "
+				+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), t, tv)) AS tag,  tag.1 AS tag_name, tag.2 AS tag_value "
 				+ " FROM " + settings.table
 				+ " WHERE dt BETWEEN " + from_ts + " AND " + to_ts;
 		if(parsed.returnColumns[0].sourceColumns[0].value) {
