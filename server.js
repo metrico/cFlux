@@ -374,7 +374,7 @@ app.all('/query', function(req, res) {
 		}
 		var response = [];
 		var sample = "SELECT entity, dt, ts,"
-				+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name, metric.2 AS metric_value, "
+				+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name, metric.2 AS metric_value "
 			//	+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), t, tv)) AS tag,  tag.1 AS tag_name, tag.2 AS tag_value "
 				+ " FROM " + settings.table;
 
