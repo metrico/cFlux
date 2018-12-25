@@ -368,10 +368,12 @@ app.all('/query', function(req, res) {
 		if(parsed.returnColumns[0].sourceColumns[0].value) {
 			var subq = []
 			parsed.returnColumns.forEach(function(source){
-				if (source.sourceColumns[0]){
-				   subq.push("metric_name = '" + source.sourceColumns[0].value+"'");
+			  source.sourceColumns.forEach(function(metric_id){
+				if (metric_id.value){
+				   subq.push("metric_name = '" + metric_id.value+"'");
 				}
-			}) 
+			  })
+			})
 			sample += " AND ("+subq.join(' OR ')+")";
 		}
 		if (debug) console.log('QUERY',sample);
@@ -388,7 +390,6 @@ app.all('/query', function(req, res) {
 		  var tmp = [row[2]/1000000];
 		  for (i=5;i<row.length;i++){ tmp.push(row[i]) };
 		  metrics[row[4]].push (tmp);
-		  // response.push ([row[2]/1000000,row[5]]);
 		});
 		stream.on ('error', function (err) {
 			// TODO: handler error
