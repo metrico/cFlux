@@ -191,6 +191,9 @@ app.all('/query', function(req, res) {
 	  if(req.query.q) { rawQuery = req.query.q; }
           else if(req.rawBody) { rawQuery =  unescape( req.rawBody.replace(/^q=/,'').replace(/\+/g,' ') ); }
 
+	  // Trim, multi-line
+	  rawQuery = rawQuery.trim();
+
           if (rawQuery.startsWith('CREATE DATABASE')) {
 
 		console.log('TRYING... ',req.query);
@@ -357,8 +360,9 @@ app.all('/query', function(req, res) {
 
           } else if (rawQuery.startsWith('SELECT')) {
 		//var cleanQuery = rawQuery.replace(/GROUP BY time.*\)/, "");
+		if (debug||exception) console.log('OH OH SELECT!',rawQuery);
                 var parsed = ifqlparser.parse(rawQuery);
-		if (debug||exception) console.log('OH OH SELECT!',JSON.stringify(parsed),rawQuery);
+		if (debug||exception) console.log('OH OH PARSED!',JSON.stringify(parsed));
 		var settings = parsed.parsed.table_exp.from.table_refs[0];
 		var where = parsed.parsed.table_exp.where;
 		var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'NOW()-300';
@@ -379,8 +383,14 @@ app.all('/query', function(req, res) {
 			})
 			sample += " AND ("+subq.join(' OR ')+")";
 		}
+
 		if (debug) console.log('QUERY',sample);
-		clickhouse_options.queryOptions.database = settings.db || settings.database.replace('.autogen','');
+
+		if (settings.db) {
+			clickhouse_options.queryOptions.database = settings.db;
+		} else if (settings.database && settings.database != '') {
+			clickhouse_options.queryOptions.database = settings.database ? settings.database.replace('.autogen','') : '';
+		}
 
 		var metrics = {};
 		var template = {"statement_id":0,"series":[{"name": settings.table ,"columns":[] }]};
@@ -400,10 +410,9 @@ app.all('/query', function(req, res) {
 		});
 		stream.on ('end', function () {
 			var results = {"results": []};
-			var columns = parsed.returnColumns.map(x => x.name);
-			columns.unshift("time");
+			// var columns = parsed.returnColumns.map(x => x.name); columns.unshift("time");
 			Object.keys(metrics).forEach(function(key,i) {
-			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": columns, "values": metrics[key] }]} );
+			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": ["time",parsed.returnColumns[i].name], "values": metrics[key] }]} );
 			});
 			res.send(results);
 		});
