@@ -54,7 +54,13 @@ var cache = recordCache({
 /* Function Helpers */
 var createTable = function(tableName){
 	if (!tableName) return;
-	var query = "CREATE TABLE IF NOT EXISTS "+tableName+" (entity String, ts UInt64, m Array(String), mv Array(Float32), t Array(String), tv Array(String), d Date MATERIALIZED toDate(round(ts/"+tsDivide+")), dt DateTime MATERIALIZED toDateTime(round(ts/"+tsDivide+")) ) ENGINE = MergeTree(d, entity, 8192)";
+	if (tableName === 'syslog' || tableName === 'alarm' ) {
+		console.log('Logs Table!');
+		var query = "CREATE TABLE IF NOT EXISTS "+tableName+" (entity String, ts UInt64, m Array(String), mv Array(String), t Array(String), tv Array(String), d Date MATERIALIZED toDate(round(ts/"+tsDivide+")), dt DateTime MATERIALIZED toDateTime(round(ts/"+tsDivide+")) ) ENGINE = MergeTree(d, entity, 8192)";
+	} else {
+		console.log('Metrics Table!');
+		var query = "CREATE TABLE IF NOT EXISTS "+tableName+" (entity String, ts UInt64, m Array(String), mv Array(Float32), t Array(String), tv Array(String), d Date MATERIALIZED toDate(round(ts/"+tsDivide+")), dt DateTime MATERIALIZED toDateTime(round(ts/"+tsDivide+")) ) ENGINE = MergeTree(d, entity, 8192)";
+	}
 	return query;
 };
 
@@ -150,32 +156,9 @@ http.createServer(app).listen(app.get('port'), function(){
 });
 
 var sendQuery = async function(query,res,update){
+  // To be decommissioned!
   if (update) getTables();
   return;
-
-  // to be decommissioned?
-
-  if (query.includes('undefined')) return;
-  if (debug) console.log('SHIPPING QUERY...',query,res,update);
-  clickhouse.query(query, {syncParser: true}, function (err, data) {
-        if (err) {
-                console.log('QUERY ERR',err.toString(),query);
-		var parsed = err.toString().match(/Table\s(.*) doesn/);
-               	if (parsed && parsed[1]){
-               	 console.log('Create Table and retry!',parsed);
-                 try {
-                       clickhouse.querying(createTable(parsed[1])).then((result) => sendQuery(query.query,res,true) )
-                       if(res) res.sendStatus(204);
-                 } catch(e) { if (res) res.sendStatus(500) }
-               	} else {
-			return;
-		}
-        } else {
-                if (debug) console.log(data);
-                if (res) res.sendStatus(204);
-        }
-	if (update) getTables();
-  });
 };
 
 /* Query Handlers */
@@ -258,7 +241,7 @@ app.all('/query', function(req, res) {
 		  	var tmp = new ClickHouse(clickhouse_options);
 			var stream = tmp.query("SELECT DISTINCT m FROM "+parsed[2]+" ARRAY JOIN m");
 			stream.on ('data', function (row) {
-			  	response.push ([row[0],"float"]);
+			  	response.push ([row[0], "float"]);
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
@@ -373,8 +356,7 @@ app.all('/query', function(req, res) {
 		}
 		var response = [];
 		var sample = "SELECT entity, dt, ts,"
-				+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name, metric.2 AS metric_value "
-			//	+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), t, tv)) AS tag,  tag.1 AS tag_name, tag.2 AS tag_value "
+				+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name, metric.2 AS metric_value"
 				+ " FROM " + settings.table;
 
 		if (from_ts && to_ts) sample += " WHERE dt BETWEEN " + from_ts + " AND " + to_ts;
