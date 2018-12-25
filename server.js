@@ -6,6 +6,7 @@
  */
 
 var debug = process.env.DEBUG || false;
+var exception = process.env.EXCEPTION || false;
 var tsDivide = process.env.TSDIVIDE || 1000000000;
 
 /* DB Helper */
@@ -16,7 +17,7 @@ const ClickHouse = require('@apla/clickhouse');
 const clickhouse_options = {
     host: process.env.CLICKHOUSE_SERVER || 'localhost',
     port: process.env.CLICKHOUSE_PORT || 8123,
-    queryOptions: { database: process.env.CLICKHOUSE_DB || 'hepic_statistics' }
+    queryOptions: { database: process.env.CLICKHOUSE_DB || 'default' }
 };
 
 var clickhouse = new ClickHouse(clickhouse_options);
@@ -164,14 +165,14 @@ var sendQuery = async function(query,res,update){
                	 console.log('Create Table and retry!',parsed);
                  try {
                        clickhouse.querying(createTable(parsed[1])).then((result) => sendQuery(query.query,res,true) )
-                       if(res) res.sendStatus(200);
+                       if(res) res.sendStatus(204);
                  } catch(e) { if (res) res.sendStatus(500) }
                	} else {
 			return;
 		}
         } else {
                 if (debug) console.log(data);
-                if (res) res.sendStatus(200);
+                if (res) res.sendStatus(204);
         }
 	if (update) getTables();
   });
@@ -210,7 +211,7 @@ app.all('/query', function(req, res) {
 
 		} else {
 			console.log('No Database Name!');
-			res.sendStatus(200);
+			res.sendStatus(204);
 		}
 
           } else if (rawQuery.startsWith('SHOW RETENTION')) {
@@ -357,14 +358,16 @@ app.all('/query', function(req, res) {
           } else if (rawQuery.startsWith('SELECT')) {
 		//var cleanQuery = rawQuery.replace(/GROUP BY time.*\)/, "");
                 var parsed = ifqlparser.parse(rawQuery);
-		if (debug) console.log('OH OH SELECT!',JSON.stringify(parsed));
+		if (debug||exception) console.log('OH OH SELECT!',JSON.stringify(parsed),rawQuery);
 		var settings = parsed.parsed.table_exp.from.table_refs[0];
 		var where = parsed.parsed.table_exp.where;
 		var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'NOW()-300';
 		var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'NOW()';
 		var response = [];
-		var sample = "SELECT entity, dt, ts, arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name, metric.2 AS metric_value FROM "+settings.table
-				+ " WHERE dt BETWEEN "+from_ts+" AND "+to_ts;
+		var sample = "SELECT entity, dt, ts,"
+				+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name, metric.2 AS metric_value "
+				+ " FROM " + settings.table
+				+ " WHERE dt BETWEEN " + from_ts + " AND " + to_ts;
 		if(parsed.returnColumns[0].sourceColumns[0].value) {
 			var subq = []
 			parsed.returnColumns.forEach(function(source){
@@ -389,7 +392,7 @@ app.all('/query', function(req, res) {
 		  if(!metrics[row[4]]) metrics[row[4]] = [];
 		  var tmp = [row[2]/1000000];
 		  for (i=5;i<row.length;i++){ tmp.push(row[i]) };
-		  metrics[row[4]].push (tmp);
+		  metrics[row[4]].push(tmp);
 		});
 		stream.on ('error', function (err) {
 			// TODO: handler error
@@ -400,7 +403,7 @@ app.all('/query', function(req, res) {
 			var columns = parsed.returnColumns.map(x => x.name);
 			columns.unshift("time");
 			Object.keys(metrics).forEach(function(key,i) {
-			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns":columns, "values": metrics[key] }]} );
+			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": columns, "values": metrics[key] }]} );
 			});
 			res.send(results);
 		});
@@ -440,5 +443,5 @@ app.get('/ping', (req, res) => {
 
 process.on('unhandledRejection', function(err, promise) {
     console.error('Error:',err);
-    //console.error('Unhandled rejection (promise: ', promise, ', reason: ', err, ').');
+    if (exception) console.error('Unhandled rejection (promise: ', promise, ', reason: ', err, ').');
 });
