@@ -381,7 +381,9 @@ app.all('/query', function(req, res) {
 			sample += " AND ("+subq.join(' OR ')+")";
 		}
 		if (debug) console.log('QUERY',sample);
-		clickhouse_options.queryOptions.database = settings.db || settings.database.replace('.autogen','');
+		if (settings.db || settings.database) {
+			clickhouse_options.queryOptions.database = settings.db || settings.database ? settings.database.replace('.autogen','') : '';
+		}
 
 		var metrics = {};
 		var template = {"statement_id":0,"series":[{"name": settings.table ,"columns":[] }]};
@@ -390,6 +392,7 @@ app.all('/query', function(req, res) {
 	  	var tmp = new ClickHouse(clickhouse_options);
 		var stream = tmp.query(sample);
 		stream.on ('data', function (row) {
+		  if(debug||exception) console.log('Q-ROW',row);
 		  if(!metrics[row[4]]) metrics[row[4]] = [];
 		  var tmp = [row[2]/1000000];
 		  for (i=5;i<row.length;i++){ tmp.push(row[i]) };
