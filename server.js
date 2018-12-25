@@ -399,7 +399,6 @@ app.all('/query', function(req, res) {
 	  	var tmp = new ClickHouse(clickhouse_options);
 		var stream = tmp.query(sample);
 		stream.on ('data', function (row) {
-		  if(debug||exception) console.log('Q-ROW',row);
 		  if(!metrics[row[4]]) metrics[row[4]] = [];
 		  var tmp = [row[2]/1000000];
 		  for (i=5;i<row.length;i++){ tmp.push(row[i]) };
@@ -411,10 +410,9 @@ app.all('/query', function(req, res) {
 		});
 		stream.on ('end', function () {
 			var results = {"results": []};
-			var columns = parsed.returnColumns.map(x => x.name);
-			columns.unshift("time");
+			// var columns = parsed.returnColumns.map(x => x.name); columns.unshift("time");
 			Object.keys(metrics).forEach(function(key,i) {
-			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": columns, "values": metrics[key] }]} );
+			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": ["time",parsed.returnColumns[i].name], "values": metrics[key] }]} );
 			});
 			res.send(results);
 		});
