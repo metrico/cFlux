@@ -368,14 +368,17 @@ app.all('/query', function(req, res) {
 		if (debug||exception) console.log('OH OH PARSED!',JSON.stringify(parsed));
 		var settings = parsed.parsed.table_exp.from.table_refs[0];
 		var where = parsed.parsed.table_exp.where;
-		var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'NOW()-300';
-		var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'NOW()';
+		if (where.condition){
+		  var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'NOW()-300';
+		  var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'NOW()';
+		}
 		var response = [];
 		var sample = "SELECT entity, dt, ts,"
 				+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name, metric.2 AS metric_value, "
-				+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), t, tv)) AS tag,  tag.1 AS tag_name, tag.2 AS tag_value "
-				+ " FROM " + settings.table
-				+ " WHERE dt BETWEEN " + from_ts + " AND " + to_ts;
+			//	+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), t, tv)) AS tag,  tag.1 AS tag_name, tag.2 AS tag_value "
+				+ " FROM " + settings.table;
+
+		if (from_ts && to_ts) sample += " WHERE dt BETWEEN " + from_ts + " AND " + to_ts;
 		if(parsed.returnColumns[0].sourceColumns[0].value) {
 			var subq = []
 			parsed.returnColumns.forEach(function(source){
