@@ -46,7 +46,7 @@ var onStale = function(data){
 
 var cache = recordCache({
   maxSize: 5000,
-  maxAge: 1000,
+  maxAge: 2000,
   onStale: onStale
 })
 
@@ -139,9 +139,9 @@ app.post('/write', function(req, res) {
 	  } else {
 		  sendQuery(query.query);
 	  }
-	  cache.add(query.parsed.measurement, query.values);	
+	  cache.add(query.parsed.measurement, query.values);
   });
-  res.sendStatus(200);
+  res.sendStatus(204);
 });
 
 http.createServer(app).listen(app.get('port'), function(){
@@ -368,10 +368,12 @@ app.all('/query', function(req, res) {
 		if(parsed.returnColumns[0].sourceColumns[0].value) {
 			var subq = []
 			parsed.returnColumns.forEach(function(source){
-				if (source.sourceColumns[0]){
-				   subq.push("metric_name = '" + source.sourceColumns[0].value+"'");
+			  source.sourceColumns.forEach(function(metric_id){
+				if (metric_id.value){
+				   subq.push("metric_name = '" + metric_id.value+"'");
 				}
-			}) 
+			  })
+			})
 			sample += " AND ("+subq.join(' OR ')+")";
 		}
 		if (debug) console.log('QUERY',sample);
@@ -385,8 +387,9 @@ app.all('/query', function(req, res) {
 		var stream = tmp.query(sample);
 		stream.on ('data', function (row) {
 		  if(!metrics[row[4]]) metrics[row[4]] = [];
-		  metrics[row[4]].push ([row[2]/1000000,row[5]]);
-		  response.push ([row[2]/1000000,row[5]]);
+		  var tmp = [row[2]/1000000];
+		  for (i=5;i<row.length;i++){ tmp.push(row[i]) };
+		  metrics[row[4]].push (tmp);
 		});
 		stream.on ('error', function (err) {
 			// TODO: handler error
@@ -394,8 +397,10 @@ app.all('/query', function(req, res) {
 		});
 		stream.on ('end', function () {
 			var results = {"results": []};
+			var columns = parsed.returnColumns.map(x => x.name);
+			columns.unshift("time");
 			Object.keys(metrics).forEach(function(key,i) {
-			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns":["time",parsed.returnColumns[0].name], "values": metrics[key] }]} );
+			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns":columns, "values": metrics[key] }]} );
 			});
 			res.send(results);
 		});
