@@ -357,8 +357,9 @@ app.all('/query', function(req, res) {
 
           } else if (rawQuery.startsWith('SELECT')) {
 		//var cleanQuery = rawQuery.replace(/GROUP BY time.*\)/, "");
+		if (debug||exception) console.log('OH OH SELECT!',rawQuery);
                 var parsed = ifqlparser.parse(rawQuery);
-		if (debug||exception) console.log('OH OH SELECT!',JSON.stringify(parsed),rawQuery);
+		if (debug||exception) console.log('OH OH PARSED!',JSON.stringify(parsed));
 		var settings = parsed.parsed.table_exp.from.table_refs[0];
 		var where = parsed.parsed.table_exp.where;
 		var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'NOW()-300';
