@@ -380,9 +380,13 @@ app.all('/query', function(req, res) {
 			})
 			sample += " AND ("+subq.join(' OR ')+")";
 		}
+
 		if (debug) console.log('QUERY',sample);
-		if (settings.db || settings.database) {
-			clickhouse_options.queryOptions.database = settings.db || settings.database ? settings.database.replace('.autogen','') : '';
+
+		if (settings.db) {
+			clickhouse_options.queryOptions.database = settings.db;
+		} else if (settings.database && settings.database != '') {
+			clickhouse_options.queryOptions.database = settings.database ? settings.database.replace('.autogen','') : '';
 		}
 
 		var metrics = {};
