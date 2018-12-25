@@ -46,7 +46,7 @@ var onStale = function(data){
 
 var cache = recordCache({
   maxSize: 5000,
-  maxAge: 1000,
+  maxAge: 2000,
   onStale: onStale
 })
 
@@ -139,9 +139,9 @@ app.post('/write', function(req, res) {
 	  } else {
 		  sendQuery(query.query);
 	  }
-	  cache.add(query.parsed.measurement, query.values);	
+	  cache.add(query.parsed.measurement, query.values);
   });
-  res.sendStatus(200);
+  res.sendStatus(204);
 });
 
 http.createServer(app).listen(app.get('port'), function(){
