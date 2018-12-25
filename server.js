@@ -191,6 +191,9 @@ app.all('/query', function(req, res) {
 	  if(req.query.q) { rawQuery = req.query.q; }
           else if(req.rawBody) { rawQuery =  unescape( req.rawBody.replace(/^q=/,'').replace(/\+/g,' ') ); }
 
+	  // Trim, multi-line
+	  rawQuery = rawQuery.trim();
+
           if (rawQuery.startsWith('CREATE DATABASE')) {
 
 		console.log('TRYING... ',req.query);
