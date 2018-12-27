@@ -183,8 +183,11 @@ var sendQuery = async function(query,res,update){
 var databases = [];
 app.all('/query', function(req, res) {
   if (debug) console.log('QUERY:', req.query.q, req.rawBody);
+	// Temporarily nullify group by time definition for parser incompatibility
 	if (req.query.q && req.query.q.includes('GROUP BY ')) req.query.q = req.query.q.replace(/GROUP BY time.*\)/, " FILL(null)");
 	if (req.rawBody && req.rawBody.includes('GROUP BY ')) req.rawBody = req.rawBody.replace(/GROUP BY time.*\)/, " FILL(null)");
+	// Temporarily nullify redundant time definition in latest Chronograf
+	if (req.rawBody && req.rawBody.includes('AND time < now()')) req.rawBody = req.rawBody.replace("AND time < now()","");
 
   var rawQuery;
   try {
@@ -362,6 +365,7 @@ app.all('/query', function(req, res) {
 
 		// Drop Limit, temporary measure!
 		rawQuery = rawQuery.replace("LIMIT 1000", "");
+
 		if (debug||exception) console.log('OH OH SELECT!',rawQuery);
                 var parsed = ifqlparser.parse(rawQuery);
 		if (debug||exception) console.log('OH OH PARSED!',JSON.stringify(parsed));
