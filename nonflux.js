@@ -249,37 +249,40 @@ app.post('/write', function(req, res) {
   queries.forEach(function(rawBody){
 	  if (!rawBody || rawBody == '') return;
 	  var query = lineParser(rawBody);
-	  console.log(query);
-	  var finger = fingerPrint(JSON.stringify(query.parsed.tags));
-	  if(!labels.get(finger,1)[0]){
-
 	    query.parsed.fields.forEach(function(field){
 		for (key in field){
-		  bulk_labels.add(finger,[new Date().toISOString().split('T')[0], finger, query.parsed.measurement, key, query.t, query.tv, JSON.stringify(query.parsed.tags) ]);
+		  var unique = query.parsed.tags; unique.push({"__name__":key});
+		  var uuid = JSON.stringify(unique);
+		  var finger = fingerPrint(uuid);
+		  if(!labels.get(finger,1)[0]){
+		  	bulk_labels.add(finger,[new Date().toISOString().split('T')[0], finger, query.parsed.measurement, key, query.t, query.tv, uuid ]);
+		  }
+
 		}
 	    });
 
-	  }
 	  if (query.measurement) table = query.measurement;
 	  if (tables.indexOf(query.parsed.measurement) === -1) {
 		  console.log('Creating new table...',query.parsed.measurement)
 		  try {
 			clickhouse.querying(createTable(query.parsed.measurement))
-				.then((result) => sendQuery(finger,query,true) )
+				.then((result) => sendQuery(query,true) )
 			getTables();
-		  } catch(e) { sendQuery(finger,query,true) }
+		  } catch(e) { sendQuery(query,true) }
 	  } else {
-		  sendQuery(finger,query,false);
+		  sendQuery(query,false);
 	  }
   });
   res.sendStatus(204);
 });
 
-var sendQuery = function(finger,query,reload){
-	  if (debug) console.log(finger,query);
+var sendQuery = function(query,reload){
+	  if (debug) console.log(query);
 	  query.parsed.fields.forEach(function(field){
 		for (key in field){
-		  var values = [ parseInt(finger), new Date(query.parsed.timestamp/1000000).getTime(), field[key] || 0, key || "" ];
+		  var unique = query.parsed.tags; unique.push({"__name__":key});
+		  var uuid = JSON.stringify(unique);
+		  var values = [ parseInt(fingerPrint(uuid)), new Date(query.parsed.timestamp/1000000).getTime(), field[key] || 0, key || "" ];
 		  if (debug) console.log('sample',values);
 		  bulk.add(query.parsed.measurement, values);
 		}
