@@ -120,9 +120,14 @@ app.post('/write', function(req, res) {
   // Use DB from Query, if any
   if (req.query.db) {
 	if (debug) console.log('DB',req.query.db )
+	if (!databases[req.query.db]){
+ 	                       clickhouse.querying('CREATE DATABASE IF NOT EXISTS "'+req.query.db+'"').then(function(result){
+					databases.push(req.query.db) 
+				})
+	}
 	clickhouse_options.queryOptions.database = req.query.db;
   	// Re-Initialize Clickhouse Client
-  	clickhouse = new ClickHouse(clickhouse_options);
+  	ch = new ClickHouse(clickhouse_options);
   }
 
   var queries = req.rawBody.split("\n");
@@ -133,7 +138,7 @@ app.post('/write', function(req, res) {
 	  if (tables.indexOf(table) === -1) { 
 		  console.log('Creating new table...',table)
 		  try {
-			clickhouse.querying(createTable(table))
+			ch.querying(createTable(table))
 				.then((result) => sendQuery(query.query,false,true) )
 			getTables();
 		  } catch(e) { console.log(e) }
@@ -208,7 +213,7 @@ app.all('/query', function(req, res) {
 		if (db) {
 	                 console.log('Create Database!',db);
 	                 try {
-	                       clickhouse.querying('CREATE DATABASE "'+db+'"').then((result) => console.log(result) )
+	                       clickhouse.querying('CREATE DATABASE IF NOT EXISTS "'+db+'"').then((result) => databases.push(db) )
 	                       if(res) res.send(resp_empty);
 	                 } catch(e) { 
 				console.error(e);
