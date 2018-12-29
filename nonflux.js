@@ -252,7 +252,13 @@ app.post('/write', function(req, res) {
 	  console.log(query);
 	  var finger = fingerPrint(JSON.stringify(query.parsed.tags));
 	  if(!labels.get(finger,1)[0]){
-		  bulk_labels.add(finger,[new Date().toISOString().split('T')[0], finger, query.parsed.measurement, query.parsed.measurement, query.t, query.tv, JSON.stringify(query.parsed.tags) ]);
+
+	    query.parsed.fields.forEach(function(field){
+		for (key in field){
+		  bulk_labels.add(finger,[new Date().toISOString().split('T')[0], finger, query.parsed.measurement, key, query.t, query.tv, JSON.stringify(query.parsed.tags) ]);
+		}
+	    });
+
 	  }
 	  if (query.measurement) table = query.measurement;
 	  if (tables.indexOf(query.parsed.measurement) === -1) {
