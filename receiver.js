@@ -134,7 +134,7 @@ app.post('/write', function(req, res) {
   var queries = req.rawBody.split("\n");
   queries.forEach(function(rawBody){
 	  if (!rawBody || rawBody == '') return;
-	  var query = clickline(rawBody);
+	  var query = clickline(rawBody.trim());
 	  if (query.parsed.measurement) table = query.parsed.measurement;
 	  if (tables.indexOf(table) === -1) {
 		  console.log('Creating new table...',table)
@@ -155,7 +155,7 @@ http.createServer(app).listen(app.get('port'), function(){
 });
 
 var sendQuery = async function(query,update){
-  // To be decommissioned!
+  console.log('QUERY>BULK',query);
   cache.add(query.parsed.measurement, query.values);
   if (update) getTables();
   return;
