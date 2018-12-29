@@ -5,7 +5,7 @@
  * Some Rights Reserved.
  */
 
-var debug = process.env.DEBUG || true;
+var debug = process.env.DEBUG || false;
 var exception = process.env.EXCEPTION || false;
 var tsDivide = process.env.TSDIVIDE || 1000000000;
 
@@ -117,13 +117,15 @@ var initializeTimeseries = function(dbName){
 	});
 }
 
+var databaseCache = [];
 var initialize = function(dbName,tableName){
 	console.log('Initializing DB...',dbName,tableName);
-	if (!dbName) return;
+	if (!dbName||databaseCache[dbName]) return;
 	var dbQuery = "CREATE DATABASE IF NOT EXISTS "+dbName;
 	clickhouse.query(dbQuery, function (err, data) {
 		if (err) { console.error('ERROR CREATING DATABASE!',dbQuery,err); return; }
 		databaseName = dbName;
+		databaseCache.push(dbName);
 		if(tableName){
 			clickhouse_options.queryOptions.database = dbName;
 			var tmp = new ClickHouse(clickhouse_options);
@@ -132,9 +134,9 @@ var initialize = function(dbName,tableName){
 				if (debug) console.log('Table ready!',tableName);
 				return true;
 			});
+			reloadFingerprints();
+			initializeTimeseries(dbName);
 		}
-		reloadFingerprints();
-		initializeTimeseries(dbName);
 	});
 }
 
@@ -296,6 +298,13 @@ var sendQuery = function(query,reload){
 		}
 	  })
 }
+
+
+/* INFLUXDB PING EMULATION */
+app.get('/ping', (req, res) => {
+	if (debug) console.log('PING req!');
+	clickhouse.pinging().then((result) => { res.sendStatus(204) } )
+})
 
 http.createServer(app).listen(app.get('port'), function(){
   console.log("ClickFlux server listening on port " + app.get('port'));
