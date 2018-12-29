@@ -19,9 +19,9 @@
   "homepage": "https://github.com/lmangani/nonflux#readme",
   "dependencies": {
     "@apla/clickhouse": "^1.5.3",
+    "@qxip/influx-line-protocol-parser": "^0.2.1",
     "express": "^4.16.4",
     "ifql-parser": "^0.1.9",
-    "influx-line-protocol-parser": "^0.2.0",
     "record-cache": "^1.1.0",
     "short-hash": "^1.0.0"
   }
