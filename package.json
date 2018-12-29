@@ -1,6 +1,6 @@
 {
   "name": "nonFlux",
-  "version": "1.0.6",
+  "version": "1.0.9",
   "description": "InfluxDB to Clickhouse Gateway for Timeseries",
   "main": "server.js",
   "scripts": {

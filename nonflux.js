@@ -20,7 +20,7 @@ const clickhouse_options = {
     queryOptions: { database: process.env.CLICKHOUSE_DB || 'default' }
 };
 var clickhouse = new ClickHouse(clickhouse_options);
-var ch = clickhouse;
+var ch = new ClickHouse(clickhouse_options);
 
 /* Response Helpers */
 var resp_empty = {"results":[{"statement_id":0}]};
@@ -95,20 +95,20 @@ var labelParser = function(labels){
 }
 
 var databaseName;
-var getTableQuery = function(tableName){
+var getTableQuery = function(dbName,tableName){
 	return "CREATE TABLE "+tableName+"( fingerprint UInt64,  timestamp_ms Int64,  value Float64,  string String) ENGINE = MergeTree PARTITION BY toRelativeHourNum(toDateTime(timestamp_ms / 1000)) ORDER BY (fingerprint, timestamp_ms)"
 }
 var getSeriesTableName = function(tableName){
 }
 var initializeTimeseries = function(dbName){
-	console.log('Initializing DB...');
+	console.log('Initializing TS DB...',dbName);
 	var dbQuery = "CREATE DATABASE IF NOT EXISTS "+dbName;
 	clickhouse.query(dbQuery, function (err, data) {
 		if (err) console.error(err);
 		databaseName = dbName;
 		clickhouse_options.queryOptions.database = dbName;
 		var tmp = new ClickHouse(clickhouse_options);
-		var qquery =  "CREATE TABLE time_series ( date Date,  fingerprint UInt64,  measurement String,  name String,  labelname Array(String),  labelvalue Array(String),  labels String) ENGINE = ReplacingMergeTree PARTITION BY date ORDER BY fingerprint"
+		var qquery =  "CREATE TABLE "+dbName+".time_series ( date Date,  fingerprint UInt64,  measurement String,  name String,  labelname Array(String),  labelvalue Array(String),  labels String) ENGINE = ReplacingMergeTree PARTITION BY date ORDER BY fingerprint"
 	  	tmp.query(qquery, function(err,data){
 			if (err) return err;
 			if (debug) console.log('TimeSeries Table ready!');
@@ -119,26 +119,27 @@ var initializeTimeseries = function(dbName){
 
 var initialize = function(dbName,tableName){
 	console.log('Initializing DB...',dbName,tableName);
+	if (!dbName) return;
 	var dbQuery = "CREATE DATABASE IF NOT EXISTS "+dbName;
 	clickhouse.query(dbQuery, function (err, data) {
-		if (err) console.error(err);
+		if (err) { console.error('ERROR CREATING DATABASE!',dbQuery,err); return; }
 		databaseName = dbName;
 		if(tableName){
 			clickhouse_options.queryOptions.database = dbName;
 			var tmp = new ClickHouse(clickhouse_options);
-	  		tmp.query(getTableQuery(tableName), function(err,data){
-				if (err) return err;
+	  		tmp.query(getTableQuery(dbName,tableName), function(err,data){
+				if (err) { console.err(getTableQuery(dbName,tableName),err); return; }
 				if (debug) console.log('Table ready!',tableName);
 				return true;
 			});
 		}
 		reloadFingerprints();
+		initializeTimeseries(dbName);
 	});
 }
 
 // Initialize
-initialize('superloki','samples');
-initializeTimeseries('superloki');
+// initialize('superloki','samples');
 
 var reloadFingerprints = function(){
   console.log('Reloading Fingerprints...');
@@ -158,13 +159,15 @@ var reloadFingerprints = function(){
 	});
 	stream.on ('end', function () {
 	  rows.forEach(function(row){
-	  var JSON_labels = JSON.parse(row[1])[0];
-	  labels.add(row[0],JSON.stringify(JSON_labels));
+	    try {
+	      var JSON_labels = JSON.parse(row[1])[0];
+	      labels.add(row[0],JSON.stringify(JSON_labels));
 	  	for (var key in JSON_labels){
-			if (debug) console.log('Adding key',key,row);
+			// if (debug) console.log('Adding key',key,row);
 			labels.add(key,row[1]);
 			labels.add(row[0],1);
 	  	};
+	    } catch(e) {}
 	  });
 	  if (debug) console.log('Reloaded fingerprints:',rows.length+1);
 	});
@@ -173,14 +176,16 @@ var reloadFingerprints = function(){
 /* Functions */
 
 /* Function Helpers */
-var createTable = function(tableName){
-	if (!tableName) return;
-	return getTableQuery(tableName);
+var createTable = function(dbName,tableName){
+	if (!tableName||!dbName) return;
+	return getTableQuery(dbName,tableName);
 };
 
 var tables = [];
-var getTables = function(){
+var getTables = function(dbName){
 	var showTables = "show tables";
+	clickhouse_options.queryOptions.database = dbName;
+  	ch = new ClickHouse(clickhouse_options);
 	var stream = clickhouse.query(showTables);
 	stream.on ('data', function (row) {
 	  if (tables.indexOf(row[0]) === -1) tables.push (row[0]);
@@ -192,7 +197,7 @@ var getTables = function(){
                 if (parsed && parsed[1]){
                    console.log('Create Table!',parsed);
                    try {
-                       clickhouse.querying(createTable(parsed[1])).then((result) => console.log(result) )
+                       clickhouse.querying(createTable(dbName,parsed[1])).then((result) => console.log(result) )
                        if(res) res.sendStatus(resp_empty);
                    } catch(e) { if (res) res.sendStatus(500) }
 
@@ -206,7 +211,6 @@ var getTables = function(){
 		return tables;
 	});
 }
-getTables();
 
 /* HTTP Helper */
 
@@ -236,14 +240,17 @@ app.use(rawBody);
 app.post('/write', function(req, res) {
   if (debug) console.log('RAW: ' , req.rawBody);
   if (debug) console.log('QUERY: ', req.query);
+  if (!req.query||!req.rawBody) return;
 
   // Use DB from Query, if any
   if (req.query.db) {
-	if (debug) console.log('DB',req.query.db )
-	clickhouse_options.queryOptions.database = req.query.db;
+	var dbName = req.query.db;
+	if (debug) console.log('DB',dbName )
+	initialize(dbName);
   	// Re-Initialize Clickhouse Client
-  	clickhouse = new ClickHouse(clickhouse_options);
-  }
+	clickhouse_options.queryOptions.database = dbName;
+  	ch = new ClickHouse(clickhouse_options);
+  } else { ch =  new ClickHouse(clickhouse_options); }
 
   var queries = req.rawBody.split("\n");
   queries.forEach(function(rawBody){
@@ -251,11 +258,12 @@ app.post('/write', function(req, res) {
 	  var query = lineParser(rawBody);
 	    query.parsed.fields.forEach(function(field){
 		for (key in field){
-		  var unique = query.parsed.tags; unique.push({"__name__":key});
+		  var unique = JSON.parse(JSON.stringify(query.parsed.tags)); unique.push({"__name__":key});
 		  var uuid = JSON.stringify(unique);
 		  var finger = fingerPrint(uuid);
 		  if(!labels.get(finger,1)[0]){
 		  	bulk_labels.add(finger,[new Date().toISOString().split('T')[0], finger, query.parsed.measurement, key, query.t, query.tv, uuid ]);
+			labels.add(finger,key);
 		  }
 
 		}
@@ -265,9 +273,9 @@ app.post('/write', function(req, res) {
 	  if (tables.indexOf(query.parsed.measurement) === -1) {
 		  console.log('Creating new table...',query.parsed.measurement)
 		  try {
-			clickhouse.querying(createTable(query.parsed.measurement))
+			ch.querying(createTable(dbName,query.parsed.measurement))
 				.then((result) => sendQuery(query,true) )
-			getTables();
+			getTables(dbName);
 		  } catch(e) { sendQuery(query,true) }
 	  } else {
 		  sendQuery(query,false);
@@ -280,10 +288,10 @@ var sendQuery = function(query,reload){
 	  if (debug) console.log(query);
 	  query.parsed.fields.forEach(function(field){
 		for (key in field){
-		  var unique = query.parsed.tags; unique.push({"__name__":key});
+		  var unique = JSON.parse(JSON.stringify(query.parsed.tags)); unique.push({"__name__":key});
 		  var uuid = JSON.stringify(unique);
 		  var values = [ parseInt(fingerPrint(uuid)), new Date(query.parsed.timestamp/1000000).getTime(), field[key] || 0, key || "" ];
-		  if (debug) console.log('sample',values);
+		  if (debug) console.log('PUSHING SAMPLES',values);
 		  bulk.add(query.parsed.measurement, values);
 		}
 	  })
