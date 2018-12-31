@@ -501,28 +501,54 @@ app.all('/query', function(req, res) {
 		if (debug||exception) console.log('OH OH PARSED!',JSON.stringify(parsed));
 		var settings = parsed.parsed.table_exp.from.table_refs[0];
 		var where = parsed.parsed.table_exp.where;
+		var groupby = parsed.parsed.table_exp.groupby;
+		// Breakdown
+		console.log('TYPE: '+ parsed.parsed.type);
+		console.log('DB: '+ settings.db);
+		console.log('TABLE: '+ settings.table);
+
 		if (where.condition){
 		  var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'NOW()-300';
 		  var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'NOW()';
 		}
 		var response = [];
-		var sample = "SELECT entity, dt, ts,"
-				+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), m, mv)) AS metric,  metric.1 AS metric_name, metric.2 AS metric_value "
-			//	+ " arrayJoin(arrayMap((mm, vv) -> (mm, vv), t, tv)) AS tag,  tag.1 AS tag_name, tag.2 AS tag_value "
-				+ " FROM " + settings.table;
 
-		if (from_ts && to_ts) sample += " WHERE dt BETWEEN " + from_ts + " AND " + to_ts;
+		// OPEN PREPARE
+		var prepare = "SELECT * FROM ";
 		if(parsed.returnColumns[0].sourceColumns[0].value) {
 			var subq = []
-			parsed.returnColumns.forEach(function(source){
+			var inner = []
+			var filters = [];
+			parsed.returnColumns.forEach(function(source,i){
 			  source.sourceColumns.forEach(function(metric_id){
 				if (metric_id.value){
 				   subq.push("metric_name = '" + metric_id.value+"'");
+
+				   inner.push("SELECT toStartOfMinute(toDateTime(timestamp_ms/1000)) as minute, name, avg(value) as mean, labelname, labelvalue"
+					+" FROM hepic_statistics_registrations"
+					+" ANY INNER JOIN ("
+						+"SELECT fingerprint, name, labelname, labelvalue"
+						+" FROM ("
+							+"SELECT fingerprint, name, labelname, labelvalue"
+							+" FROM time_series FINAL ARRAY JOIN labelname,labelvalue"
+							+" PREWHERE measurement='hepic_statistics_registrations'"
+							+" AND name IN ('unauth') AND hasAny(['gid'], labelname) = 1"
+							if (filters.length > 0) filters.forEach(function(filter){
+								+" AND labelvalue[arrayFirstIndex(x -> (x = filter.name), labelname)] = filter.value)"
+							}
+						+" WHERE labelname='captid' )"
+					+" USING(fingerprint)"
+					+" PREWHERE timestamp_ms BETWEEN "+from_ts+" AND "+to_ts
 				}
 			  })
 			})
-			sample += " AND ("+subq.join(' OR ')+")";
+			prepare += " ( "+inner.join(' UNION ALL ')+") ";
+			if (from_ts && to_ts) prepare += " PREWHERE timestamp BETWEEN " + from_ts + " AND " + to_ts;
+			prepare += "GROUP by fingerprint, minute, name, labelname,labelvalue ORDER by minute "
 		}
+
+		// CLOSE PREPARE
+		prepare += " ORDER BY minute,name";
 
 		if (debug) console.log('QUERY',sample);
 
@@ -602,3 +628,4 @@ http.createServer(app).listen(app.get('port'), function(){
 process.on('unhandledRejection', function(err, promise) {
     console.error('Error:',err);
 });
+
