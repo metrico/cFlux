@@ -121,7 +121,7 @@ var initializeTimeseries = function(dbName){
 var databaseCache = [];
 var initialize = function(dbName,tableName){
 	console.log('Initializing DB...',dbName,tableName);
-	if (!dbName||databaseCache[dbName]) return;
+	if (!dbName||databaseCache.indexOf(dbName) != -1 ) return;
 	var dbQuery = "CREATE DATABASE IF NOT EXISTS "+dbName;
 	clickhouse.query(dbQuery, function (err, data) {
 		if (err) { console.error('ERROR CREATING DATABASE!',dbQuery,err); }
@@ -249,7 +249,7 @@ app.post('/write', function(req, res) {
   if (req.query.db) {
 	var dbName = req.query.db;
 	if (debug) console.log('DB',dbName )
-	if (databases.indexOf(dbName) == -1) initialize(dbName);
+	if (databaseCache.indexOf(dbName) === -1) initialize(dbName);
   	// Re-Initialize Clickhouse Client
 	clickhouse_options.queryOptions.database = dbName;
   	ch = new ClickHouse(clickhouse_options);
@@ -387,7 +387,7 @@ app.all('/query', function(req, res) {
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
 			// var stream = tmp.query("SELECT DISTINCT m FROM "+parsed[2]+" ARRAY JOIN m");
-			var stream = tmp.query("select name from time_series WHERE measurement='"+parsed[2]+"' GROUP BY name;");
+			var stream = tmp.query("select name from time_series WHERE measurement='" +parsed[2] +"' GROUP BY name");
 			stream.on ('data', function (row) {
 			  	response.push ([row[0],"float"]);
 			});
@@ -412,7 +412,7 @@ app.all('/query', function(req, res) {
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
 			//var stream = tmp.query("SELECT uniq_pair.1 AS k, uniq_pair.2 AS v FROM (SELECT groupUniqArray((t, tv)) AS uniq_pair FROM "+parsed[2]+" ARRAY JOIN t, tv) ARRAY JOIN uniq_pair");
-			var stream = tmp.query("SELECT measurement, labelname from time_series ARRAY JOIN labelname GROUP BY measurement,labelname;");
+			var stream = tmp.query("SELECT measurement, labelname from time_series ARRAY JOIN labelname GROUP BY measurement,labelname");
 			stream.on ('data', function (row) {
 			  response.push ([row[0],row[1]]);
 			});
@@ -437,7 +437,7 @@ app.all('/query', function(req, res) {
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
 			// var stream = tmp.query("SELECT uniq_pair.1 AS k, uniq_pair.2 AS v FROM (SELECT groupUniqArray((t, tv)) AS uniq_pair FROM "+parsed[2]+" ARRAY JOIN t, tv) ARRAY JOIN uniq_pair");
-			var stream = tmp.query("SELECT labelname,labelvalue from time_series ARRAY JOIN labelname,labelvalue WHERE measurement='"+parsed[2]+"' AND labelname='"+parsed[2]+"' GROUP BY labelname,labelvalue;");
+			var stream = tmp.query("SELECT labelname,labelvalue from time_series ARRAY JOIN labelname,labelvalue WHERE measurement='"+parsed[2]+"' GROUP BY labelname,labelvalue");
 			stream.on ('data', function (row) {
 			  	response.push( { name: row[0], columns: ['key','value'], values: [ [row[0], row[1] ] ] } );
 			});
@@ -460,7 +460,7 @@ app.all('/query', function(req, res) {
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
 			//var stream = tmp.query('SHOW TABLES');
-			var stream = tmp.query('select measurement from time_series_new GROUP by measurement;');
+			var stream = tmp.query('select measurement from time_series GROUP by measurement');
 			stream.on ('data', function (row) {
 			  response.push (row);
 			});
@@ -526,35 +526,35 @@ app.all('/query', function(req, res) {
 				   subq.push("metric_name = '" + metric_id.value+"'");
 
 				   var tmp = "SELECT toStartOfMinute(toDateTime(timestamp_ms/1000)) as minute, name, avg(value) as mean, labelname, labelvalue"
-					+" FROM hepic_statistics_registrations"
-					+" ANY INNER JOIN ("
+					+" FROM "+settings.table+" ANY INNER JOIN ("
 						+"SELECT fingerprint, name, labelname, labelvalue"
 						+" FROM ("
-							+"SELECT fingerprint, name, labelname, labelvalue"
+							+" SELECT fingerprint, name, labelname, labelvalue"
 							+" FROM time_series FINAL ARRAY JOIN labelname,labelvalue"
 							+" PREWHERE measurement='" + settings.table + "'";
 						//	+" AND name IN ('"+ metric_id.value +"')"
 						//	+" AND hasAny(['gid'], labelname) = 1";
 							if (filters.length > 0) filters.forEach(function(filter){
-								tmp+=" AND labelvalue[arrayFirstIndex(x -> (x = "+filter.name+"), labelname)] = "+filter.value+")";
+								tmp+=" AND labelvalue[arrayFirstIndex(x -> (x = "+filter.name+"), labelname)] = "+filter.value;
 							})
-					  tmp+=" WHERE labelname='captid' )"
+							tmp+=") ";
+					tmp+=" WHERE labelname='captid' ";
+					tmp+=" )"
 					+" USING(fingerprint)"
-					+" PREWHERE timestamp_ms BETWEEN "+from_ts+ " AND " + to_ts;
+					+" PREWHERE timestamp_ms BETWEEN "+from_ts+ " AND " + to_ts
+					+" GROUP by fingerprint, minute, name, labelname,labelvalue ORDER by minute";
 
 				   inner.push(tmp);
 				}
 			  })
 			})
-			prepare += " ( "+inner.join(' UNION ALL ')+") ";
-			if (from_ts && to_ts) prepare += " PREWHERE timestamp BETWEEN " + from_ts + " AND " + to_ts;
-			prepare += "GROUP by fingerprint, minute, name, labelname,labelvalue ORDER by minute "
+			prepare += " ( "+inner.join(' UNION ALL ') + ") ";
 		}
+		prepare += " ORDER BY minute,name"
 
 		// CLOSE PREPARE
-		prepare += " ORDER BY minute,name";
 
-		if (debug) console.log('QUERY',sample);
+		console.log('NEW QUERY',prepare);
 
 		if (settings.db) {
 			clickhouse_options.queryOptions.database = settings.db;
@@ -567,7 +567,7 @@ app.all('/query', function(req, res) {
 
 	  	// Re-Initialize Clickhouse Client
 	  	var tmp = new ClickHouse(clickhouse_options);
-		var stream = tmp.query(sample);
+		var stream = tmp.query(prepare);
 		stream.on ('data', function (row) {
 		  if(!metrics[row[4]]) metrics[row[4]] = [];
 		  var tmp = [row[2]/1000000];
