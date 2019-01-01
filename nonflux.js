@@ -124,7 +124,7 @@ var initialize = function(dbName,tableName){
 	if (!dbName||databaseCache[dbName]) return;
 	var dbQuery = "CREATE DATABASE IF NOT EXISTS "+dbName;
 	clickhouse.query(dbQuery, function (err, data) {
-		if (err) { console.error('ERROR CREATING DATABASE!',dbQuery,err); return; }
+		if (err) { console.error('ERROR CREATING DATABASE!',dbQuery,err); }
 		databaseName = dbName;
 		databaseCache.push(dbName);
 		if(tableName){
@@ -136,8 +136,8 @@ var initialize = function(dbName,tableName){
 				return true;
 			});
 			reloadFingerprints();
-			initializeTimeseries(dbName);
 		}
+		initializeTimeseries(dbName);
 	});
 }
 
@@ -249,7 +249,7 @@ app.post('/write', function(req, res) {
   if (req.query.db) {
 	var dbName = req.query.db;
 	if (debug) console.log('DB',dbName )
-	initialize(dbName);
+	if (databases.indexOf(dbName) == -1) initialize(dbName);
   	// Re-Initialize Clickhouse Client
 	clickhouse_options.queryOptions.database = dbName;
   	ch = new ClickHouse(clickhouse_options);
@@ -486,7 +486,7 @@ app.all('/query', function(req, res) {
 			console.error('GET DATA ERR',err);
 		});
 		stream.on ('end', function () {
-			databases = response;
+			// databases = response;
 			if (debug) console.log(databases)
 			var results = {"results":[{"statement_id":0,"series":[{"name":"databases","columns":["name"], "values": response } ]} ]};
 			res.send(results);
@@ -630,6 +630,6 @@ http.createServer(app).listen(app.get('port'), function(){
 
 
 process.on('unhandledRejection', function(err, promise) {
-    console.error('Error:',err);
+    if (debug) console.error('Error:',err);
 });
 
