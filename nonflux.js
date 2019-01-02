@@ -582,6 +582,7 @@ app.all('/query', function(req, res) {
 		}
 
 		var metrics = {};
+		var tags = {};
 		var template = {"statement_id":0,"series":[{"name": settings.table ,"columns":[] }]};
 
 	  	// Re-Initialize Clickhouse Client
@@ -592,6 +593,9 @@ app.all('/query', function(req, res) {
 		  var tmp = [ row[0]*1000, row[2] ];
 		  //for (i=5;i<row.length;i++){ tmp.push(row[i]) };
 		  metrics[row[1]].push(tmp);
+		  // tags
+		  if(!tags[row[1]]) tags[row[1]] = {};
+		  if(row[4]) tags[row[3]] = row[4];
 		});
 		stream.on ('error', function (err) {
 			// TODO: handler error
@@ -602,7 +606,8 @@ app.all('/query', function(req, res) {
 			// var columns = parsed.returnColumns.map(x => x.name); columns.unshift("time");
 			Object.keys(metrics).forEach(function(key,i) {
 			  //results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": ["time",parsed.returnColumns[i].name], "values": metrics[key] }]} );
-			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": ["time", key], "values": metrics[key] }]} );
+			  var line = {"statement_id":i,"series":[{"name": key ,"tags": tags[key], "columns": ["time", key], "values": metrics[key] }]};
+			  results.results.push(line);
 			});
 			res.send(results);
 		});
