@@ -393,7 +393,7 @@ app.all('/query', function(req, res) {
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
-				console.error('GET DATA ERR',err);
+				console.error('GET DATA ERR',rawQuery,err);
 			});
 			stream.on ('end', function () {
 				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["fieldKey","fieldType"],"values":response }]}]};
@@ -418,7 +418,7 @@ app.all('/query', function(req, res) {
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
-				console.error('GET DATA ERR',err);
+				console.error('GET DATA ERR',rawQuery,err);
 			});
 			stream.on ('end', function () {
 				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["key","value"],"values":results }]}]}
@@ -443,7 +443,7 @@ app.all('/query', function(req, res) {
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
-				console.error('GET DATA ERR',err);
+				console.error('GET DATA ERR',rawQuery,err);
 			});
 			stream.on ('end', function () {
 				var results = {"results":[{"statement_id":0,"series":response }]};
@@ -466,7 +466,7 @@ app.all('/query', function(req, res) {
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
-				console.error('GET DATA ERR',err);
+				console.error('GET DATA ERR',rawQuery,err);
 			});
 			stream.on ('end', function () {
 				var results = {"results":[{"statement_id":0,"series":[{"name":"measurements","columns":["name"],"values":response }]}]}
@@ -483,7 +483,7 @@ app.all('/query', function(req, res) {
 		});
 		stream.on ('error', function (err) {
 			// TODO: handler error
-			console.error('GET DATA ERR',err);
+			console.error('GET DATA ERR',rawQuery,err);
 		});
 		stream.on ('end', function () {
 			// databases = response;
@@ -521,27 +521,28 @@ app.all('/query', function(req, res) {
 			var inner = []
 			var filters = [];
 			parsed.returnColumns.forEach(function(source,i){
+			  var nameas = source.name;
 			  source.sourceColumns.forEach(function(metric_id){
 				if (metric_id.value){
 				   subq.push("metric_name = '" + metric_id.value+"'");
 
-				   var tmp = "SELECT toStartOfMinute(toDateTime(timestamp_ms/1000)) as minute, name, avg(value) as mean, labelname, labelvalue"
+				   var tmp = "SELECT toUnixTimestamp(toStartOfMinute(toDateTime(timestamp_ms/1000))) as minute, name, avg(value) as mean, labelname, labelvalue"
 					+" FROM "+settings.table+" ANY INNER JOIN ("
 						+"SELECT fingerprint, name, labelname, labelvalue"
 						+" FROM ("
 							+" SELECT fingerprint, name, labelname, labelvalue"
 							+" FROM time_series FINAL ARRAY JOIN labelname,labelvalue"
-							+" PREWHERE measurement='" + settings.table + "'";
+							+" PREWHERE name='" + metric_id.value + "'";
 						//	+" AND name IN ('"+ metric_id.value +"')"
 						//	+" AND hasAny(['gid'], labelname) = 1";
 							if (filters.length > 0) filters.forEach(function(filter){
 								tmp+=" AND labelvalue[arrayFirstIndex(x -> (x = "+filter.name+"), labelname)] = "+filter.value;
 							})
 							tmp+=") ";
-					tmp+=" WHERE labelname='captid' ";
+				//	tmp+=" WHERE labelname='" +metric_id.value+ "' ";
 					tmp+=" )"
 					+" USING(fingerprint)"
-					+" PREWHERE timestamp_ms BETWEEN "+from_ts+ " AND " + to_ts
+					+" PREWHERE minute BETWEEN "+from_ts+ " AND " + to_ts
 					+" GROUP by fingerprint, minute, name, labelname,labelvalue ORDER by minute";
 
 				   inner.push(tmp);
@@ -569,21 +570,24 @@ app.all('/query', function(req, res) {
 	  	var tmp = new ClickHouse(clickhouse_options);
 		var stream = tmp.query(prepare);
 		stream.on ('data', function (row) {
-		  if(!metrics[row[4]]) metrics[row[4]] = [];
-		  var tmp = [row[2]/1000000];
-		  for (i=5;i<row.length;i++){ tmp.push(row[i]) };
-		  metrics[row[4]].push(tmp);
+		  if(!metrics[row[1]]) metrics[row[1]] = [];
+		  var tmp = [ row[0]*1000, row[2] ];
+		  //for (i=5;i<row.length;i++){ tmp.push(row[i]) };
+		  metrics[row[1]].push(tmp);
 		});
 		stream.on ('error', function (err) {
 			// TODO: handler error
-			console.error('GET DATA ERR',err);
+			console.error('GET DATA ERR',rawQuery,err);
 		});
 		stream.on ('end', function () {
 			var results = {"results": []};
 			// var columns = parsed.returnColumns.map(x => x.name); columns.unshift("time");
 			Object.keys(metrics).forEach(function(key,i) {
-			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": ["time",parsed.returnColumns[i].name], "values": metrics[key] }]} );
+			  // console.log(key,parsed.returnColumns[i]);
+			  //results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": ["time",parsed.returnColumns[i].name], "values": metrics[key] }]} );
+			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": ["time",key, "values": metrics[key] }]} );
 			});
+			console.log('RESULTS',results);
 			res.send(results);
 		});
 
