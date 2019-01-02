@@ -582,20 +582,39 @@ app.all('/query', function(req, res) {
 		}
 
 		var metrics = {};
-		var tags = {};
+		var xtags = {};
 		var template = {"statement_id":0,"series":[{"name": settings.table ,"columns":[] }]};
 
 	  	// Re-Initialize Clickhouse Client
 	  	var tmp = new ClickHouse(clickhouse_options);
 		var stream = tmp.query(prepare);
 		stream.on ('data', function (row) {
+
+		  var tmp = [ row[0]*1000, row[2] ];
+
+		  if(!xtags[row[1]]) {
+			 xtags[row[1]] = {};
+			 if(!xtags[row[1]][row[3]]) {
+				xtags[row[1]][row[3]] = {}
+			 	if(!xtags[row[1]][row[3]][row[4]]) {
+					xtags[row[1]][row[3]][row[4]] = []
+					console.log('Tag Created!');
+				}
+			}
+		  }
+		  if ( xtags[row[1]][row[3]][row[4]] ) xtags[row[1]][row[3]][row[4]].push(tmp);
+
+		/*
 		  if(!metrics[row[1]]) metrics[row[1]] = [];
 		  var tmp = [ row[0]*1000, row[2] ];
 		  //for (i=5;i<row.length;i++){ tmp.push(row[i]) };
 		  metrics[row[1]].push(tmp);
 		  // tags
-		  if(!tags[row[1]]) tags[row[1]] = {};
-		  if(row[4]) tags[row[3]] = row[4];
+		  if(!xtags[row[1]]) xtags[row[1]] = {};
+		  if(row[4]) xtags[row[1]][row[3]] = row[4];
+		*/
+
+
 		});
 		stream.on ('error', function (err) {
 			// TODO: handler error
@@ -603,12 +622,29 @@ app.all('/query', function(req, res) {
 		});
 		stream.on ('end', function () {
 			var results = {"results": []};
-			// var columns = parsed.returnColumns.map(x => x.name); columns.unshift("time");
+			/*
 			Object.keys(metrics).forEach(function(key,i) {
 			  //results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": ["time",parsed.returnColumns[i].name], "values": metrics[key] }]} );
-			  var line = {"statement_id":i,"series":[{"name": key ,"tags": tags[key], "columns": ["time", key], "values": metrics[key] }]};
+			  var line = {"statement_id":i,"series":[{"name": key ,"tags": xtags[key], "columns": ["time", key], "values": metrics[key] }]};
 			  results.results.push(line);
 			});
+			*/
+
+			Object.keys(xtags).forEach(function(metric,i) {
+		      	  var line = {"statement_id":i,"series":[{"name": metric, "tags":false, "values": false, "columns": ["time", metric] }]};
+			  Object.keys(xtags[metric]).forEach(function(xtag,t) {
+			    Object.keys(xtags[metric][xtag]).forEach(function(xvalue,v) {
+				console.log('stripe',xtags,metric,xtag,xvalue);
+				var tags = {}; tags[xtag] = xvalue;
+				line.series[0].tags = tags;
+				line.series[0].values = xtags[metric][xtag][xvalue];
+			      	// var line = {"statement_id":i,"series":[{"name": metric ,"tags": { tag: value}, "columns": ["time", key], "values": metrics[key] }]};
+			      	results.results.push(line);
+			    });
+			  });
+			});
+
+
 			res.send(results);
 		});
 
