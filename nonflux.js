@@ -463,14 +463,14 @@ app.all('/query', function(req, res) {
 			//var stream = tmp.query("SELECT uniq_pair.1 AS k, uniq_pair.2 AS v FROM (SELECT groupUniqArray((t, tv)) AS uniq_pair FROM "+parsed[2]+" ARRAY JOIN t, tv) ARRAY JOIN uniq_pair");
 			var stream = tmp.query("SELECT measurement, labelname from time_series ARRAY JOIN labelname WHERE measurement='"+parsed[1]+"' GROUP BY measurement,labelname");
 			stream.on ('data', function (row) {
-			  response.push ([row[0],row[1]]);
+			  response.push ([row[1]]);
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
 				console.error('GET DATA ERR',rawQuery,err);
 			});
 			stream.on ('end', function () {
-				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[1],"columns":["key","value"],"values":response }]}]}
+				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[1],"columns":["tagKey"],"values":response }]}]}
 				res.send(results);
 			});
 		    }
@@ -508,6 +508,31 @@ app.all('/query', function(req, res) {
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
 			var stream = tmp.query("SELECT labelname,labelvalue from time_series ARRAY JOIN labelname,labelvalue WHERE measurement='"+parsed[1]+"' GROUP BY labelname,labelvalue");
+			stream.on ('data', function (row) {
+			  	response.push( { name: row[0], columns: ['key','value'], values: [ [row[0], row[1] ] ] } );
+			});
+			stream.on ('error', function (err) {
+				// TODO: handler error
+				console.error('GET DATA ERR',rawQuery,err);
+			});
+			stream.on ('end', function () {
+				var results = {"results":[{"statement_id":0,"series":response }]};
+				res.send(results);
+			});
+
+		   }
+
+		} else {
+		   // Legacy Query w/ array
+		   var parsed = rawQuery.match(/SHOW TAG VALUES FROM \"(.*)\" WITH KEY IN\((.*)\)/);
+		   if (parsed && parsed[1] && parsed[2]){
+			if (debug) console.log('get tag values for',parsed[1],req.query.db);
+			var response = [];
+			var keys = parsed[2].replace('"',"'");
+			clickhouse_options.queryOptions.database = req.query.db;
+		  	// Re-Initialize Clickhouse Client
+		  	var tmp = new ClickHouse(clickhouse_options);
+			var stream = tmp.query("SELECT labelname,labelvalue from time_series ARRAY JOIN labelname,labelvalue WHERE measurement='"+parsed[1]+"' AND labelname IN ("+keys+") GROUP BY labelname,labelvalue");
 			stream.on ('data', function (row) {
 			  	response.push( { name: row[0], columns: ['key','value'], values: [ [row[0], row[1] ] ] } );
 			});
