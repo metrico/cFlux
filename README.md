@@ -1,4 +1,4 @@
-<img src="https://user-images.githubusercontent.com/1423657/50374656-0a078400-05f2-11e9-8754-98b98e0244c4.png" width=100>
+<img src="https://user-images.githubusercontent.com/1423657/50525862-772d8480-0ade-11e9-95d5-d5150332eb18.png" width=120>
 
 # nonFlux
 Experimental, unoptimized InfluxDB to Clickhouse Gateway prototype for Timeseries. 
