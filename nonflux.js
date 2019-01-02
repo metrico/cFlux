@@ -438,7 +438,7 @@ app.all('/query', function(req, res) {
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
 			//var stream = tmp.query("SELECT uniq_pair.1 AS k, uniq_pair.2 AS v FROM (SELECT groupUniqArray((t, tv)) AS uniq_pair FROM "+parsed[2]+" ARRAY JOIN t, tv) ARRAY JOIN uniq_pair");
-			var stream = tmp.query("SELECT measurement, labelname from time_series ARRAY JOIN labelname GROUP BY measurement,labelname");
+			var stream = tmp.query("SELECT measurement, labelname from time_series ARRAY JOIN labelname WHERE measurement='"+parsed[2]+"' GROUP BY measurement,labelname");
 			stream.on ('data', function (row) {
 			  response.push ([row[0],row[1]]);
 			});
@@ -453,7 +453,7 @@ app.all('/query', function(req, res) {
 
 		} else {
 
-		    var parsed = rawQuery.match(/SHOW TAG KEYS FROM \"(.*)\"\s?/);
+		    var parsed = rawQuery.match(/SHOW TAG KEYS FROM "(.*)"/);
 		    if (parsed && parsed[1]){
 			if (debug) console.log('get fields for',parsed[1],req.query.db);
 			var response = [];
@@ -461,7 +461,7 @@ app.all('/query', function(req, res) {
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
 			//var stream = tmp.query("SELECT uniq_pair.1 AS k, uniq_pair.2 AS v FROM (SELECT groupUniqArray((t, tv)) AS uniq_pair FROM "+parsed[2]+" ARRAY JOIN t, tv) ARRAY JOIN uniq_pair");
-			var stream = tmp.query("SELECT measurement, labelname from time_series ARRAY JOIN labelname GROUP BY measurement,labelname");
+			var stream = tmp.query("SELECT measurement, labelname from time_series ARRAY JOIN labelname WHERE measurement='"+parsed[1]+"' GROUP BY measurement,labelname");
 			stream.on ('data', function (row) {
 			  response.push ([row[0],row[1]]);
 			});
