@@ -697,13 +697,6 @@ app.all('/query', function(req, res) {
 		});
 		stream.on ('end', function () {
 			var results = {"results": []};
-			/*
-			Object.keys(metrics).forEach(function(key,i) {
-			  //results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": ["time",parsed.returnColumns[i].name], "values": metrics[key] }]} );
-			  var line = {"statement_id":i,"series":[{"name": key ,"tags": xtags[key], "columns": ["time", key], "values": metrics[key] }]};
-			  results.results.push(line);
-			});
-			*/
 
 			Object.keys(xtags).forEach(function(metric,i) {
 		      	  var line = {"statement_id":i,"series":[{"name": settings.table, "tags":false, "values": false, "columns": ["time", metric] }]};
@@ -736,7 +729,6 @@ app.all('/query', function(req, res) {
 
           } else {
 		try {
-	                //var parsed = ifqlparser.parse(rawQuery);
 			console.log('UNSUPPORTED',rawQuery);
 			res.send(resp_empty);
 			
