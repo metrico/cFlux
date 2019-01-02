@@ -488,7 +488,7 @@ app.all('/query', function(req, res) {
 			console.error('GET DATA ERR',rawQuery,err);
 		});
 		stream.on ('end', function () {
-			// databases = response;
+			databases = response;
 			if (debug) console.log(databases)
 			var results = {"results":[{"statement_id":0,"series":[{"name":"databases","columns":["name"], "values": response } ]} ]};
 			res.send(results);
