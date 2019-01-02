@@ -299,7 +299,7 @@ var sendQuery = function(query,reload){
 		  var unique = JSON.parse(JSON.stringify(query.parsed.tags)); unique.push({"__name__":key});
 		  var uuid = JSON.stringify(unique);
 		  var values = [ parseInt(fingerPrint(uuid)), new Date(query.parsed.timestamp/1000000).getTime(), field[key] || 0, key || "" ];
-		  if (debug) console.log('PUSHING SAMPLES',values);
+		  // if (debug) console.log('PUSHING SAMPLES',values);
 		  bulk.add(query.parsed.measurement, values);
 		}
 	  })
