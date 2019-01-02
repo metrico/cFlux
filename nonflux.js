@@ -478,14 +478,15 @@ app.all('/query', function(req, res) {
 
           } else if (rawQuery.startsWith('SHOW TAG VALUES FROM')) {
 
-		var parsed = rawQuery.match(/SHOW TAG VALUES FROM \"(.*)\"\.\"(.*)\"\s?/);
+		var parsed = rawQuery.match(/SHOW TAG VALUES FROM \"(.*)\"\.\"(.*)\" WITH KEY IN (.*)/);
 		if (parsed && parsed[1] && parsed[2]){
 			if (debug) console.log('get tag values for',parsed[2],req.query.db);
 			var response = [];
+			var keys = parsed[2].replace('"',"'");
 			clickhouse_options.queryOptions.database = req.query.db;
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
-			var stream = tmp.query("SELECT labelname,labelvalue from time_series ARRAY JOIN labelname,labelvalue WHERE measurement='"+parsed[2]+"' GROUP BY labelname,labelvalue");
+			var stream = tmp.query("SELECT labelname,labelvalue from time_series ARRAY JOIN labelname,labelvalue WHERE measurement='"+parsed[2]+"' AND labelname IN "+keys+" GROUP BY labelname,labelvalue");
 			stream.on ('data', function (row) {
 			  	response.push( { name: row[0], columns: ['key','value'], values: [ [row[0], row[1] ] ] } );
 			});
@@ -500,37 +501,15 @@ app.all('/query', function(req, res) {
 
 		} else {
 		   // Legacy Query
-		   var parsed = rawQuery.match(/SHOW TAG VALUES FROM \"(.*)\"\s?/);
-		   if (parsed && parsed[1]){
-			if (debug) console.log('get tag values for',parsed[1],req.query.db);
-			var response = [];
-			clickhouse_options.queryOptions.database = req.query.db;
-		  	// Re-Initialize Clickhouse Client
-		  	var tmp = new ClickHouse(clickhouse_options);
-			var stream = tmp.query("SELECT labelname,labelvalue from time_series ARRAY JOIN labelname,labelvalue WHERE measurement='"+parsed[1]+"' GROUP BY labelname,labelvalue");
-			stream.on ('data', function (row) {
-			  	response.push( { name: row[0], columns: ['key','value'], values: [ [row[0], row[1] ] ] } );
-			});
-			stream.on ('error', function (err) {
-				// TODO: handler error
-				console.error('GET DATA ERR',rawQuery,err);
-			});
-			stream.on ('end', function () {
-				var results = {"results":[{"statement_id":0,"series":response }]};
-				res.send(results);
-			});
-
-		   } else {
-		   // Legacy Query w/ array
-		   var parsed = rawQuery.match(/SHOW TAG VALUES FROM \"(.*)\" WITH KEY IN\((.*)\)/);
-		     if (parsed && parsed[1] && parsed[2]){
+		   var parsed = rawQuery.match(/SHOW TAG VALUES FROM \"(.*)\" WITH KEY IN (.*)/);
+		   if (parsed && parsed[1] && parsed[2]){
 			if (debug) console.log('get tag values for',parsed[1],req.query.db);
 			var response = [];
 			var keys = parsed[2].replace('"',"'");
 			clickhouse_options.queryOptions.database = req.query.db;
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
-			var stream = tmp.query("SELECT labelname,labelvalue from time_series ARRAY JOIN labelname,labelvalue WHERE measurement='"+parsed[1]+"' AND labelname IN ("+keys+") GROUP BY labelname,labelvalue");
+			var stream = tmp.query("SELECT labelname,labelvalue from time_series ARRAY JOIN labelname,labelvalue WHERE measurement='"+parsed[1]+"' AND labelname IN "+keys+" GROUP BY labelname,labelvalue");
 			stream.on ('data', function (row) {
 			  	response.push( { name: row[0], columns: ['key','value'], values: [ [row[0], row[1] ] ] } );
 			});
@@ -543,10 +522,7 @@ app.all('/query', function(req, res) {
 				res.send(results);
 			});
 
-		     }
-
 		   }
-
 		}
 
           } else if (rawQuery.startsWith('SHOW MEASUREMENTS')) {
