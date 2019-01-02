@@ -5,6 +5,7 @@ Experimental, unoptimized InfluxDB API to Clickhouse DB Gateway prototype for Ti
 
 **Do not use this!**
 
+![ezgif com-optimize 14](https://user-images.githubusercontent.com/1423657/50405673-8f3c9580-07b8-11e9-8f41-7577246488d6.gif)
 
 ### Status
 - [x] Endpoint `/write`
@@ -45,4 +46,3 @@ The `/write` endpoint expects HTTP POST data using the InfluxDB line protocol:
       -X POST 'http://localhost:8686/write?db=mystats'
 ```
 
-![ezgif com-optimize 14](https://user-images.githubusercontent.com/1423657/50405673-8f3c9580-07b8-11e9-8f41-7577246488d6.gif)
