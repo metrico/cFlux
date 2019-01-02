@@ -587,21 +587,30 @@ app.all('/query', function(req, res) {
 		console.log('TABLE: '+ settings.table);
 
 		if (where.condition){
-		  try {
-		    if(where.condition.right.left.name.value == 'now' && where.condition.right.right.value && where.condition.right.right.range){
-			var from_ts = "toDateTime( now()-" +toTime(where.condition.right.right.value+where.condition.right.right.range.data_type).seconds()+  ")";
-			var to_ts = "toDateTime( now() )";
+                  try {
+                    if( where.condition.right.left.name
+                        && where.condition.right.left.name.value == 'now'
+                        && where.condition.right.right && where.condition.right.right.value
+                        && where.condition.right.right.range){
+                            var from_ts = "toDateTime( now()-" +toTime(where.condition.right.right.value+where.condition.right.right.range.data_type).seconds()+  ")";
+                            var to_ts = "toDateTime( now() )";
 
-		    } else {
-			var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'toDateTime(now()-300)';
-			var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'toDateTime(now())';
-		    }
-		  } catch(e){
-			if (debug) console.log('DEFAULT DATE SELECT');
-			var from_ts = 'toDateTime(now()-3600)';
-			var to_ts = 'toDateTime(now())';
-		  }
-		}
+                    } else if(where.condition.left.left && where.condition.left.left.value == 'time' && where.condition.right && where.condition.right.left.value == 'time') {
+                        console.log('FROM TIME',parseInt(where.condition.left.right.value/1000000000));
+                        console.log('TO TIME',parseInt(where.condition.right.right.value/1000000000));
+                        var from_ts = "toDateTime(" + parseInt(where.condition.left.right.value/1000000000) +")";
+                        var to_ts = "toDateTime(" + parseInt(where.condition.right.right.value/1000000000) +")";
+
+                    } else {
+                        var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'toDateTime(now()-300)';
+                        var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'toDateTime(now())';
+                    }
+                  } catch(e){
+                        console.log('DATE RANGE ERR',e);
+                        var from_ts = 'toDateTime(now()-3600)';
+                        var to_ts = 'toDateTime(now())';
+                  }
+                }
 		var response = [];
 
 		// OPEN PREPARE
