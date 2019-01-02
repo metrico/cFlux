@@ -21,7 +21,7 @@ Experimental, unoptimized InfluxDB to Clickhouse Gateway prototype for Timeserie
   - [x] SHOW FIELDS KEYS
   - [ ] SELECT
     - [x] Fields
-    - [ ] Tags
+    - [x] Tags
     - [x] Timerange _(now)_
     - [ ] Group By
 
@@ -31,7 +31,7 @@ Experimental, unoptimized InfluxDB to Clickhouse Gateway prototype for Timeserie
 CLICKHOUSE_SERVER=my.clickhouse.server npm start
 ```
 
-The server attempts emulating an InfluxDB instance and can accept line protocol and query requests from Telegraf, Chronograf, Kapacitor and potentially clients with (extremely) basic features.
+The server attempts emulating an InfluxDB API instance and can accept line protocol and query requests from Telegraf, Chronograf, Kapacitor and potentially clients with (extremely) basic features.
 
 
 ##### POST Metrics `/write`
