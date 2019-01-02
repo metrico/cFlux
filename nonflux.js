@@ -24,6 +24,7 @@ var ch = new ClickHouse(clickhouse_options);
 
 /* Response Helpers */
 var resp_empty = {"results":[{"statement_id":0}]};
+const toTime = require('to-time');
 
 /* Cache Helper */
 var recordCache = require('record-cache');
@@ -309,6 +310,7 @@ app.all('/query', function(req, res) {
 	// Temporarily nullify group by time definition for parser incompatibility
 	if (req.query.q && req.query.q.includes('GROUP BY ')) req.query.q = req.query.q.replace(/GROUP BY time.*\)/, " FILL(null)");
 	if (req.rawBody && req.rawBody.includes('GROUP BY ')) req.rawBody = req.rawBody.replace(/GROUP BY time.*\)/, " FILL(null)");
+
 	// Temporarily nullify redundant time definition in latest Chronograf
 	if (req.rawBody && req.rawBody.includes('AND time < now()')){
 		var timeRange = req.rawBody.match(/time.+now\(\)(.*)AND time.+now\(\)/g)
@@ -509,23 +511,39 @@ app.all('/query', function(req, res) {
 		console.log('TABLE: '+ settings.table);
 
 		if (where.condition){
-		  var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'NOW()-300';
-		  var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'NOW()';
+		  try {
+		    if(where.condition.right.left.name.value == 'now' && where.condition.right.right.value && where.condition.right.right.range){
+			var from_ts = "toDateTime( now()-" +toTime(where.condition.right.right.value+where.condition.right.right.range.data_type).seconds()+  ")";
+			var to_ts = "toDateTime( now() )";
+
+		    } else {
+			var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'toDateTime(now()-300)';
+			var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'toDateTime(now())';
+		    }
+		  } catch(e){
+			var from_ts = 'toDateTime(now()-300)';
+			var to_ts = 'toDateTime(now())';
+		  }
 		}
 		var response = [];
 
 		// OPEN PREPARE
 		var prepare = "SELECT * FROM ";
 		if(parsed.returnColumns[0].sourceColumns[0].value) {
-			var subq = []
 			var inner = []
 			var filters = [];
+			if(where.condition.right && where.condition.right.exprs){
+				where.condition.right.exprs.forEach(function(cond){
+					if(cond.left.left.value && cond.left.right.string){
+						filters.push({"name":cond.left.left.value, "value": cond.left.right.string});
+					}
+				});
+			}
+
 			parsed.returnColumns.forEach(function(source,i){
 			  var nameas = source.name;
 			  source.sourceColumns.forEach(function(metric_id){
 				if (metric_id.value){
-				   subq.push("metric_name = '" + metric_id.value+"'");
-
 				   var tmp = "SELECT toUnixTimestamp(toStartOfMinute(toDateTime(timestamp_ms/1000))) as minute, name, avg(value) as mean, labelname, labelvalue"
 					+" FROM "+settings.table+" ANY INNER JOIN ("
 						+"SELECT fingerprint, name, labelname, labelvalue"
@@ -536,7 +554,7 @@ app.all('/query', function(req, res) {
 						//	+" AND name IN ('"+ metric_id.value +"')"
 						//	+" AND hasAny(['gid'], labelname) = 1";
 							if (filters.length > 0) filters.forEach(function(filter){
-								tmp+=" AND labelvalue[arrayFirstIndex(x -> (x = "+filter.name+"), labelname)] = "+filter.value;
+								tmp+=" AND labelvalue[arrayFirstIndex(x -> (x = '"+filter.name+"'), labelname)] = '"+filter.value+"'";
 							})
 							tmp+=") ";
 				//	tmp+=" WHERE labelname='" +metric_id.value+ "' ";
@@ -583,11 +601,9 @@ app.all('/query', function(req, res) {
 			var results = {"results": []};
 			// var columns = parsed.returnColumns.map(x => x.name); columns.unshift("time");
 			Object.keys(metrics).forEach(function(key,i) {
-			  // console.log(key,parsed.returnColumns[i]);
 			  //results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": ["time",parsed.returnColumns[i].name], "values": metrics[key] }]} );
-			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": ["time",key, "values": metrics[key] }]} );
+			  results.results.push( {"statement_id":i,"series":[{"name": key ,"columns": ["time", key], "values": metrics[key] }]} );
 			});
-			console.log('RESULTS',results);
 			res.send(results);
 		});
 
