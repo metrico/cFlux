@@ -520,12 +520,10 @@ app.all('/query', function(req, res) {
 				res.send(results);
 			});
 
-		   }
-
-		} else {
+		   } else {
 		   // Legacy Query w/ array
 		   var parsed = rawQuery.match(/SHOW TAG VALUES FROM \"(.*)\" WITH KEY IN\((.*)\)/);
-		   if (parsed && parsed[1] && parsed[2]){
+		     if (parsed && parsed[1] && parsed[2]){
 			if (debug) console.log('get tag values for',parsed[1],req.query.db);
 			var response = [];
 			var keys = parsed[2].replace('"',"'");
@@ -545,10 +543,11 @@ app.all('/query', function(req, res) {
 				res.send(results);
 			});
 
+		     }
+
 		   }
 
 		}
-
 
           } else if (rawQuery.startsWith('SHOW MEASUREMENTS')) {
 		if (req.query.db) {
