@@ -300,14 +300,10 @@ var sendQuery = function(query,reload){
 		  var unique = JSON.parse(JSON.stringify(query.parsed.tags)); unique.push({"__name__":key});
 		  var uuid = JSON.stringify(unique);
 		  var values = [ parseInt(fingerPrint(uuid)), new Date(query.parsed.timestamp/1000000).getTime(), field[key] || 0, key || "" ];
-		  // if (debug) console.log('PUSHING SAMPLES',values);
 		  bulk.add(query.parsed.measurement, values);
 		}
 	  })
 }
-
-
-/* BEGIN EXPERIMENT */
 
 var databases = [];
 app.all('/query', function(req, res) {
@@ -393,7 +389,6 @@ app.all('/query', function(req, res) {
 			clickhouse_options.queryOptions.database = req.query.db;
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
-			// var stream = tmp.query("SELECT DISTINCT m FROM "+parsed[2]+" ARRAY JOIN m");
 			var stream = tmp.query("select name from time_series WHERE measurement='" +parsed[2] +"' GROUP BY name");
 			stream.on ('data', function (row) {
 			  	response.push ([row[0],"float"]);
@@ -415,7 +410,6 @@ app.all('/query', function(req, res) {
 			clickhouse_options.queryOptions.database = req.query.db;
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
-			// var stream = tmp.query("SELECT DISTINCT m FROM "+parsed[2]+" ARRAY JOIN m");
 			var stream = tmp.query("select name from time_series WHERE measurement='" +parsed[1] +"' GROUP BY name");
 			stream.on ('data', function (row) {
 			  	response.push ([row[0],"float"]);
@@ -442,7 +436,6 @@ app.all('/query', function(req, res) {
 			clickhouse_options.queryOptions.database = req.query.db;
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
-			//var stream = tmp.query("SELECT uniq_pair.1 AS k, uniq_pair.2 AS v FROM (SELECT groupUniqArray((t, tv)) AS uniq_pair FROM "+parsed[2]+" ARRAY JOIN t, tv) ARRAY JOIN uniq_pair");
 			var stream = tmp.query("SELECT measurement, labelname from time_series ARRAY JOIN labelname WHERE measurement='"+parsed[2]+"' GROUP BY measurement,labelname");
 			stream.on ('data', function (row) {
 			  response.push ([row[0],row[1]]);
@@ -465,7 +458,6 @@ app.all('/query', function(req, res) {
 			clickhouse_options.queryOptions.database = req.query.db;
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
-			//var stream = tmp.query("SELECT uniq_pair.1 AS k, uniq_pair.2 AS v FROM (SELECT groupUniqArray((t, tv)) AS uniq_pair FROM "+parsed[2]+" ARRAY JOIN t, tv) ARRAY JOIN uniq_pair");
 			var stream = tmp.query("SELECT measurement, labelname from time_series ARRAY JOIN labelname WHERE measurement='"+parsed[1]+"' GROUP BY measurement,labelname");
 			stream.on ('data', function (row) {
 			  response.push ([row[1]]);
@@ -526,7 +518,6 @@ app.all('/query', function(req, res) {
 				var results = {"results":[{"statement_id":0,"series":response }]};
 				res.send(results);
 			});
-
 		   }
 		}
 
@@ -550,7 +541,6 @@ app.all('/query', function(req, res) {
 				var results = {"results":[{"statement_id":0,"series":[{"name":"measurements","columns":["name"],"values":response }]}]}
 				res.send(results);
 			});
-
 		}
 
           } else if (rawQuery.startsWith('SHOW DATABASES')) {
@@ -574,7 +564,6 @@ app.all('/query', function(req, res) {
 
 		// Drop Limit, temporary measure!
 		rawQuery = rawQuery.replace(/LIMIT [0-9]{1,9}/, "");
-
 		if (debug||exception) console.log('OH OH SELECT!',rawQuery);
                 var parsed = ifqlparser.parse(rawQuery.trim());
 		if (debug||exception) console.log('OH OH PARSED!',JSON.stringify(parsed));
@@ -596,10 +585,8 @@ app.all('/query', function(req, res) {
                             var to_ts = "toDateTime( now() )";
 
                     } else if(where.condition.left.left && where.condition.left.left.value == 'time' && where.condition.right && where.condition.right.left.value == 'time') {
-                        console.log('FROM TIME',parseInt(where.condition.left.right.value/1000000000));
-                        console.log('TO TIME',parseInt(where.condition.right.right.value/1000000000));
-                        var from_ts = "toDateTime(" + parseInt(where.condition.left.right.value/1000000000) +")";
-                        var to_ts = "toDateTime(" + parseInt(where.condition.right.right.value/1000000000) +")";
+                        var from_ts = "toDateTime(" + parseInt(where.condition.left.right.value/tsDivide ) +")";
+                        var to_ts = "toDateTime(" + parseInt(where.condition.right.right.value/tsDivide ) +")";
 
                     } else {
                         var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'toDateTime(now()-300)';
@@ -659,7 +646,7 @@ app.all('/query', function(req, res) {
 
 		// CLOSE PREPARE
 
-		console.log('NEW QUERY',prepare);
+		if (debug) console.log('NEW QUERY',prepare);
 
 		if (settings.db) {
 			clickhouse_options.queryOptions.database = settings.db;
@@ -684,22 +671,11 @@ app.all('/query', function(req, res) {
 				xtags[row[1]][row[3]] = {}
 			 	if(!xtags[row[1]][row[3]][row[4]]) {
 					xtags[row[1]][row[3]][row[4]] = []
-					console.log('Tag Created!');
+					if (debug) console.log('Tag Created!');
 				}
 			}
 		  }
 		  if ( xtags[row[1]][row[3]][row[4]] ) xtags[row[1]][row[3]][row[4]].push(tmp);
-
-		/*
-		  if(!metrics[row[1]]) metrics[row[1]] = [];
-		  var tmp = [ row[0]*1000, row[2] ];
-		  //for (i=5;i<row.length;i++){ tmp.push(row[i]) };
-		  metrics[row[1]].push(tmp);
-		  // tags
-		  if(!xtags[row[1]]) xtags[row[1]] = {};
-		  if(row[4]) xtags[row[1]][row[3]] = row[4];
-		*/
-
 
 		});
 		stream.on ('error', function (err) {
@@ -717,7 +693,6 @@ app.all('/query', function(req, res) {
 				var tags = {}; tags[xtag] = xvalue;
 				line.series[0].tags = tags;
 				line.series[0].values = xtags[metric][xtag][xvalue];
-			      	// var line = {"statement_id":i,"series":[{"name": metric ,"tags": { tag: value}, "columns": ["time", key], "values": metrics[key] }]};
 			      	results.results.push(line);
 			    });
 			  });
@@ -752,10 +727,6 @@ app.all('/query', function(req, res) {
 	
 });
 
-/* END EXPERIMENT */
-
-
-
 /* INFLUXDB PING EMULATION */
 app.get('/ping', (req, res) => {
 	if (debug) console.log('PING req!');
@@ -765,7 +736,6 @@ app.get('/ping', (req, res) => {
 http.createServer(app).listen(app.get('port'), function(){
   console.log("ClickFlux server listening on port " + app.get('port'));
 });
-
 
 process.on('unhandledRejection', function(err, promise) {
     if (debug) console.error('Error:',err);
