@@ -420,7 +420,7 @@ app.all('/query', function(req, res) {
 				console.error('GET DATA ERR',rawQuery,err);
 			});
 			stream.on ('end', function () {
-				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["fieldKey","fieldType"],"values":response }]}]};
+				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[1],"columns":["fieldKey","fieldType"],"values":response }]}]};
 				res.send(results);
 			});
 
