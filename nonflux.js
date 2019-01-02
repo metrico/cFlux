@@ -447,7 +447,7 @@ app.all('/query', function(req, res) {
 				console.error('GET DATA ERR',rawQuery,err);
 			});
 			stream.on ('end', function () {
-				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["key","value"],"values":results }]}]}
+				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["key","value"],"values":response }]}]}
 				res.send(results);
 			});
 
@@ -470,7 +470,7 @@ app.all('/query', function(req, res) {
 				console.error('GET DATA ERR',rawQuery,err);
 			});
 			stream.on ('end', function () {
-				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[1],"columns":["key","value"],"values":results }]}]}
+				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[1],"columns":["key","value"],"values":response }]}]}
 				res.send(results);
 			});
 		    }
