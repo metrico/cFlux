@@ -25,6 +25,10 @@ var ch = new ClickHouse(clickhouse_options);
 /* Response Helpers */
 var resp_empty = {"results":[{"statement_id":0}]};
 const toTime = require('to-time');
+String.prototype.replaceAll = function(search, replacement) {
+    var target = this;
+    return target.split(search).join(replacement);
+};
 
 /* Cache Helper */
 var recordCache = require('record-cache');
