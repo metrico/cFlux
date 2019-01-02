@@ -1,0 +1,100 @@
+version: '2.1'
+# nonFlux + Clickhouse
+
+services:
+
+  clickhouse-seed:
+    container_name: clickhouse-seed
+    image: yandex/clickhouse-server
+#    ports:
+#      - "8123:8123"   # HTTP transport
+#      - "9000:9000"   # Native clients
+
+  clickhouse-client:
+    container_name: clickhouse-client
+    image: yandex/clickhouse-client
+    entrypoint:
+      - /bin/sleep
+    command:
+      - infinity
+
+  nonflux:
+    container_name: nonflux
+    image: qxip/nonflux:dev
+    environment:
+      - "CLICKHOUSE_SERVER=clickhouse-seed"
+      - "CLICKHOUSE_DB=default"
+      - "PORT=8086"
+      - "EXCEPTION=true"
+      - "DEBUG=true"
+    expose:
+      - 8086
+    ports:
+      - "8086:8086"
+    depends_on:
+      - clickhouse-seed
+
+#  tabix:
+#    container_name: tabix
+#    image: spoonest/clickhouse-tabix-web-client
+#    ports: 
+#      - "9068:80"
+#    environment:
+#      - "CH_HOST=http://clickhouse-seed:9067"
+#      - "CH_NAME=hepic"
+#    depends_on:
+#      - clickhouse-seed
+
+  loudml:
+    container_name: loudml
+    image: loudml/community
+    volumes:
+      - ./loudml:/var/lib/loudml
+      - ./config/config.yml:/etc/loudml/config.yml:ro
+    expose:
+      - 8077
+
+  chronograf:
+    container_name: chronograf
+    image: loudml/chronograf
+    environment:
+      INFLUXDB_URL: http://nonflux:8086
+      KAPACITOR_URL: http://kapacitor:9092
+      LOUDML_URL: http://loudml:8077
+    expose:
+      - 8888
+    ports:
+      - "8888:8888"
+    links:
+      - nonflux
+      - kapacitor
+      - loudml
+
+  kapacitor:
+    container_name: kapacitor
+    image: kapacitor
+    environment:
+      KAPACITOR_HOSTNAME: kapacitor
+      KAPACITOR_INFLUXDB_0_URLS_0: http://nonflux:8086
+      KAPACITOR_LOAD_DIR: /var/lib/kapacitor/load
+      KAPACITOR_LOAD_ENABLED: 'false'
+    volumes:
+#      - ./config/diffs.tick:/var/lib/kapacitor/load/tasks/diffs.tick
+      - ./config/kapacitor.conf:/etc/kapacitor/kapacitor.conf
+      - ./kapacitor:/var/lib/kapacitor
+    links:
+      - nonflux
+    expose:
+      - 9092
+    ports:
+      - "9092:9092"
+
+  telegraf:
+    container_name: telegraf
+    image: telegraf:1.9-alpine
+    links:
+      - nonflux
+    volumes:
+      - ./config/telegraf.conf:/etc/telegraf/telegraf.conf
+    depends_on:
+      - nonflux
