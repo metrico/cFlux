@@ -482,7 +482,7 @@ app.all('/query', function(req, res) {
 		if (parsed && parsed[1] && parsed[2]){
 			if (debug) console.log('get tag values for',parsed[2],req.query.db);
 			var response = [];
-			var keys = parsed[2].replace('"',"'");
+			var keys = parsed[3].replaceAll('"',"'");
 			clickhouse_options.queryOptions.database = req.query.db;
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
@@ -505,7 +505,7 @@ app.all('/query', function(req, res) {
 		   if (parsed && parsed[1] && parsed[2]){
 			if (debug) console.log('get tag values for',parsed[1],req.query.db);
 			var response = [];
-			var keys = parsed[2].replace('"',"'");
+			var keys = parsed[2].replaceAll('"',"'");
 			clickhouse_options.queryOptions.database = req.query.db;
 		  	// Re-Initialize Clickhouse Client
 		  	var tmp = new ClickHouse(clickhouse_options);
