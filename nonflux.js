@@ -191,6 +191,7 @@ var createTable = function(dbName,tableName){
 
 var tables = [];
 var getTables = function(dbName){
+	if (!dbName) return;
 	var showTables = "show tables";
 	clickhouse_options.queryOptions.database = dbName;
   	ch = new ClickHouse(clickhouse_options);
@@ -596,7 +597,8 @@ app.all('/query', function(req, res) {
 			var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'toDateTime(now())';
 		    }
 		  } catch(e){
-			var from_ts = 'toDateTime(now()-300)';
+			if (debug) console.log('DEFAULT DATE SELECT');
+			var from_ts = 'toDateTime(now()-3600)';
 			var to_ts = 'toDateTime(now())';
 		  }
 		}
@@ -736,7 +738,6 @@ app.all('/query', function(req, res) {
           }
   } catch(e) {
           console.log(e);
-	  getTables();
           res.send(resp_empty);
   }
 	
