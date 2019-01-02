@@ -402,6 +402,30 @@ app.all('/query', function(req, res) {
 				res.send(results);
 			});
 
+		} else {
+		    var parsed = rawQuery.match(/SHOW FIELD KEYS FROM "(.*)"/);
+		    if (parsed && parsed[1]){
+			if (debug) console.log('get fields for',parsed[1],req.query.db);
+			var response = [];
+			clickhouse_options.queryOptions.database = req.query.db;
+		  	// Re-Initialize Clickhouse Client
+		  	var tmp = new ClickHouse(clickhouse_options);
+			// var stream = tmp.query("SELECT DISTINCT m FROM "+parsed[2]+" ARRAY JOIN m");
+			var stream = tmp.query("select name from time_series WHERE measurement='" +parsed[1] +"' GROUP BY name");
+			stream.on ('data', function (row) {
+			  	response.push ([row[0],"float"]);
+			});
+			stream.on ('error', function (err) {
+				// TODO: handler error
+				console.error('GET DATA ERR',rawQuery,err);
+			});
+			stream.on ('end', function () {
+				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["fieldKey","fieldType"],"values":response }]}]};
+				res.send(results);
+			});
+
+		    }
+
 		}
 
           } else if (rawQuery.startsWith('SHOW TAG KEYS')) {
@@ -449,10 +473,7 @@ app.all('/query', function(req, res) {
 				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["key","value"],"values":results }]}]}
 				res.send(results);
 			});
-
 		    }
-
-
                 }
 
           } else if (rawQuery.startsWith('SHOW TAG VALUES FROM')) {
