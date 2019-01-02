@@ -575,7 +575,7 @@ app.all('/query', function(req, res) {
 		rawQuery = rawQuery.replace(/LIMIT [0-9]{1,9}/, "");
 
 		if (debug||exception) console.log('OH OH SELECT!',rawQuery);
-                var parsed = ifqlparser.parse(rawQuery);
+                var parsed = ifqlparser.parse(rawQuery.trim());
 		if (debug||exception) console.log('OH OH PARSED!',JSON.stringify(parsed));
 		var settings = parsed.parsed.table_exp.from.table_refs[0];
 		var where = parsed.parsed.table_exp.where;
@@ -706,7 +706,7 @@ app.all('/query', function(req, res) {
 			*/
 
 			Object.keys(xtags).forEach(function(metric,i) {
-		      	  var line = {"statement_id":i,"series":[{"name": metric, "tags":false, "values": false, "columns": ["time", metric] }]};
+		      	  var line = {"statement_id":i,"series":[{"name": settings.table, "tags":false, "values": false, "columns": ["time", metric] }]};
 			  Object.keys(xtags[metric]).forEach(function(xtag,t) {
 			    Object.keys(xtags[metric][xtag]).forEach(function(xvalue,v) {
 				console.log('stripe',xtags,metric,xtag,xvalue);
