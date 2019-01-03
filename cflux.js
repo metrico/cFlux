@@ -438,14 +438,14 @@ app.all('/query', function(req, res) {
 		  	var tmp = new ClickHouse(clickhouse_options);
 			var stream = tmp.query("SELECT measurement, labelname from time_series ARRAY JOIN labelname WHERE measurement='"+parsed[2]+"' GROUP BY measurement,labelname");
 			stream.on ('data', function (row) {
-			  response.push ([row[0],row[1]]);
+			  response.push ([ row[1] ]);
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
 				console.error('GET DATA ERR',rawQuery,err);
 			});
 			stream.on ('end', function () {
-				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["key","value"],"values":response }]}]}
+				var results = {"results":[{"statement_id":0,"series":[{"name":parsed[2],"columns":["tagKey"],"values":response }]}]}
 				res.send(results);
 			});
 
@@ -460,7 +460,7 @@ app.all('/query', function(req, res) {
 		  	var tmp = new ClickHouse(clickhouse_options);
 			var stream = tmp.query("SELECT measurement, labelname from time_series ARRAY JOIN labelname WHERE measurement='"+parsed[1]+"' GROUP BY measurement,labelname");
 			stream.on ('data', function (row) {
-			  response.push ([row[1]]);
+			  response.push ([ row[1] ]);
 			});
 			stream.on ('error', function (err) {
 				// TODO: handler error
