@@ -1,11 +1,11 @@
 {
-  "name": "nonFlux",
-  "version": "1.1.0",
+  "name": "cFlux",
+  "version": "1.1.1",
   "description": "InfluxDB to Clickhouse Gateway for Timeseries",
-  "main": "nonflux.js",
+  "main": "cflux.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node nonflux.js"
+    "start": "node cflux.js"
   },
   "repository": {
     "type": "git",
