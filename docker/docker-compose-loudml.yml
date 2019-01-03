@@ -1,5 +1,5 @@
 version: '2.1'
-# nonFlux + Clickhouse
+# cflux + Clickhouse
 
 services:
 
@@ -18,9 +18,9 @@ services:
     command:
       - infinity
 
-  nonflux:
-    container_name: nonflux
-    image: qxip/nonflux:dev
+  cflux:
+    container_name: cflux
+    image: qxip/cflux
     environment:
       - "CLICKHOUSE_SERVER=clickhouse-seed"
       - "CLICKHOUSE_DB=default"
@@ -58,7 +58,7 @@ services:
     container_name: chronograf
     image: loudml/chronograf
     environment:
-      INFLUXDB_URL: http://nonflux:8086
+      INFLUXDB_URL: http://cflux:8086
       KAPACITOR_URL: http://kapacitor:9092
       LOUDML_URL: http://loudml:8077
     expose:
@@ -66,7 +66,7 @@ services:
     ports:
       - "8888:8888"
     links:
-      - nonflux
+      - cflux
       - kapacitor
       - loudml
 
@@ -75,7 +75,7 @@ services:
     image: kapacitor
     environment:
       KAPACITOR_HOSTNAME: kapacitor
-      KAPACITOR_INFLUXDB_0_URLS_0: http://nonflux:8086
+      KAPACITOR_INFLUXDB_0_URLS_0: http://cflux:8086
       KAPACITOR_LOAD_DIR: /var/lib/kapacitor/load
       KAPACITOR_LOAD_ENABLED: 'false'
     volumes:
@@ -83,7 +83,7 @@ services:
       - ./config/kapacitor.conf:/etc/kapacitor/kapacitor.conf
       - ./kapacitor:/var/lib/kapacitor
     links:
-      - nonflux
+      - cflux
     expose:
       - 9092
     ports:
@@ -93,8 +93,8 @@ services:
     container_name: telegraf
     image: telegraf:1.9-alpine
     links:
-      - nonflux
+      - cflux
     volumes:
       - ./config/telegraf.conf:/etc/telegraf/telegraf.conf
     depends_on:
-      - nonflux
+      - cflux

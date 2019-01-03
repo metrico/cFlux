@@ -2,7 +2,7 @@
 datasources:
   - name: influx
     type: influxdb
-    addr: nonflux:8086
+    addr: cflux:8086
     database: hepic
   - name: kapacitor
     type: influxdb
