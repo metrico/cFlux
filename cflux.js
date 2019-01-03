@@ -688,7 +688,7 @@ app.all('/query', function(req, res) {
 			})
 			prepare += " ( "+inner.join(' UNION ALL ') + ") ";
 		}
-		prepare += " ORDER BY minute,name"
+		prepare += " ORDER BY minute,name,labelname,labelvalue"
 
 		// CLOSE PREPARE
 
