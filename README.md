@@ -1,10 +1,11 @@
-<img src="https://user-images.githubusercontent.com/1423657/50374656-0a078400-05f2-11e9-8754-98b98e0244c4.png" width=100>
+<img src="https://user-images.githubusercontent.com/1423657/50525862-772d8480-0ade-11e9-95d5-d5150332eb18.png" width=120>
 
-# nonFlux
-Experimental, unoptimized InfluxDB to Clickhouse Gateway prototype for Timeseries. 
+# cFlux
+Experimental, unoptimized InfluxDB API to Clickhouse DB Gateway prototype for Timeseries. 
 
 **Do not use this!**
 
+![ezgif com-optimize 14](https://user-images.githubusercontent.com/1423657/50405673-8f3c9580-07b8-11e9-8f41-7577246488d6.gif)
 
 ### Status
 - [x] Endpoint `/write`
@@ -21,7 +22,7 @@ Experimental, unoptimized InfluxDB to Clickhouse Gateway prototype for Timeserie
   - [x] SHOW FIELDS KEYS
   - [ ] SELECT
     - [x] Fields
-    - [ ] Tags
+    - [x] Tags
     - [x] Timerange _(now)_
     - [ ] Group By
 
@@ -31,7 +32,7 @@ Experimental, unoptimized InfluxDB to Clickhouse Gateway prototype for Timeserie
 CLICKHOUSE_SERVER=my.clickhouse.server npm start
 ```
 
-The server attempts emulating an InfluxDB instance and can accept line protocol and query requests from Telegraf, Chronograf, Kapacitor and potentially clients with (extremely) basic features.
+The server attempts emulating an InfluxDB API instance and can accept line protocol and query requests from Telegraf, Chronograf, Kapacitor and potentially clients with (extremely) basic features.
 
 
 ##### POST Metrics `/write`
@@ -45,4 +46,3 @@ The `/write` endpoint expects HTTP POST data using the InfluxDB line protocol:
       -X POST 'http://localhost:8686/write?db=mystats'
 ```
 
-![ezgif com-optimize 14](https://user-images.githubusercontent.com/1423657/50405673-8f3c9580-07b8-11e9-8f41-7577246488d6.gif)

@@ -1,11 +1,11 @@
 {
-  "name": "nonFlux",
-  "version": "1.0.5",
+  "name": "cFlux",
+  "version": "1.1.1",
   "description": "InfluxDB to Clickhouse Gateway for Timeseries",
-  "main": "server.js",
+  "main": "cflux.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node cflux.js"
   },
   "repository": {
     "type": "git",
@@ -19,9 +19,11 @@
   "homepage": "https://github.com/lmangani/nonflux#readme",
   "dependencies": {
     "@apla/clickhouse": "^1.5.3",
-    "clickline": "^1.0.8",
+    "@qxip/influx-line-protocol-parser": "^0.2.1",
     "express": "^4.16.4",
     "ifql-parser": "^0.1.9",
-    "record-cache": "^1.1.0"
+    "record-cache": "^1.1.0",
+    "short-hash": "^1.0.0",
+    "to-time": "^1.0.2"
   }
 }
