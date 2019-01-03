@@ -1,6 +1,6 @@
 <img src="https://user-images.githubusercontent.com/1423657/50525862-772d8480-0ade-11e9-95d5-d5150332eb18.png" width=120>
 
-# nonFlux
+# cFlux
 Experimental, unoptimized InfluxDB API to Clickhouse DB Gateway prototype for Timeseries. 
 
 **Do not use this!**
