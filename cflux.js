@@ -284,7 +284,8 @@ app.post('/write', function(req, res) {
 		  try {
 			ch.querying(createTable(dbName,query.parsed.measurement))
 				.then((result) => sendQuery(query,true) )
-			getTables(dbName);
+				tables.push(query.parsed.measurement);
+				getTables(dbName);
 		  } catch(e) { sendQuery(query,true) }
 	  } else {
 		  sendQuery(query,false);
@@ -337,8 +338,9 @@ app.all('/query', function(req, res) {
 		if (db) {
 	                 console.log('Create Database!',db);
 	                 try {
-	                       clickhouse.querying('CREATE DATABASE IF NOT EXISTS "'+db+'"').then((result) => databases.push(db) )
-	                       if(res) res.send(resp_empty);
+	                       	// clickhouse.querying('CREATE DATABASE IF NOT EXISTS "'+db+'"').then((result) => databases.push(db) )
+				initialize(db);
+	                       	if(res) res.send(resp_empty);
 	                 } catch(e) { 
 				console.error(e);
 				if (res) res.sendStatus(500) 
@@ -352,7 +354,7 @@ app.all('/query', function(req, res) {
           } else if (rawQuery.startsWith('SHOW RETENTION')) {
 		var data = { "results": [] };
 		// temporarily feed a faux retention policy
-		databases.forEach(function(db,i){
+		databaseCache.forEach(function(db,i){
 	  	    data.results.push({
 		      "statement_id": i,
 		      "series": [
