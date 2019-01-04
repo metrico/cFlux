@@ -21,7 +21,7 @@
     "@apla/clickhouse": "^1.5.3",
     "@qxip/influx-line-protocol-parser": "^0.2.1",
     "express": "^4.16.4",
-    "ifql-parser": "^0.1.9",
+    "ifql-parser": "^0.2.1",
     "record-cache": "^1.1.0",
     "short-hash": "^1.0.0",
     "to-time": "^1.0.2"

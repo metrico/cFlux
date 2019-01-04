@@ -29,6 +29,9 @@ String.prototype.replaceAll = function(search, replacement) {
     var target = this;
     return target.split(search).join(replacement);
 };
+var formatDate = function(d){
+	return d.getFullYear().toString()+"-"+((d.getMonth()+1).toString().length==2?(d.getMonth()+1).toString():"0"+(d.getMonth()+1).toString())+"-"+(d.getDate().toString().length==2?d.getDate().toString():"0"+d.getDate().toString())+" "+(d.getHours().toString().length==2?d.getHours().toString():"0"+d.getHours().toString())+":"+((parseInt(d.getMinutes()/5)*5).toString().length==2?(parseInt(d.getMinutes()/5)*5).toString():"0"+(parseInt(d.getMinutes()/5)*5).toString())+":00";
+};
 
 /* Cache Helper */
 var recordCache = require('record-cache');
@@ -634,8 +637,8 @@ app.all('/query', function(req, res) {
 		console.log('DB: '+ settings.db);
 		console.log('TABLE: '+ settings.table);
 
-		if (where.condition){
-                  try {
+                try {
+		  if (where.condition){
                     if( where.condition.right.left.name
                         && where.condition.right.left.name.value == 'now'
                         && where.condition.right.right && where.condition.right.right.value
@@ -644,19 +647,25 @@ app.all('/query', function(req, res) {
                             var to_ts = "toDateTime( now() )";
 
                     } else if(where.condition.left.left && where.condition.left.left.value == 'time' && where.condition.right && where.condition.right.left.value == 'time') {
-                        var from_ts = "toDateTime(" + parseInt(where.condition.left.right.value/tsDivide ) +")";
-                        var to_ts = "toDateTime(" + parseInt(where.condition.right.right.value/tsDivide ) +")";
-
+			if (where.condition.left.right.value && where.condition.right.right.value){
+                        	var from_ts = "toDateTime(" + parseInt(where.condition.left.right.value/tsDivide) + ")";
+                        	var to_ts = "toDateTime(" + parseInt(where.condition.right.right.value/tsDivide)  + ")";
+			} else if (where.condition.left.right.string && where.condition.right.right.string){
+                        	var from_ts = "toDateTime(toUnixTimestamp('"+formatDate( new Date(where.condition.left.right.string))  +"'))";
+                        	var to_ts =   "toDateTime(toUnixTimestamp('"+formatDate( new Date(where.condition.right.right.string)) +"'))";
+			}
                     } else {
                         var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'toDateTime(now()-300)';
                         var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'toDateTime(now())';
                     }
-                  } catch(e){
+                  }
+                } catch(e){
                         console.log('DATE RANGE ERR',e);
                         var from_ts = 'toDateTime(now()-3600)';
                         var to_ts = 'toDateTime(now())';
-                  }
                 }
+		console.log('TIME RANGE: '+ from_ts, to_ts);
+
 		var response = [];
 
 		// OPEN PREPARE
