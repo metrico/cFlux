@@ -34,7 +34,7 @@ String.prototype.replaceAll = function(search, replacement) {
 var recordCache = require('record-cache');
 var onStale = function(data){
  	for (let [key, value] of data.records.entries()) {
-	     var statement = "INSERT INTO "+key+"(fingerprint, timestamp_ms, value, string)";
+	     var statement = "INSERT INTO "+key+"(fingerprint, timestamp_ms, value, string, string)";
    	     ch = new ClickHouse(clickhouse_options);
 	     var clickStream = ch.query (statement, {inputFormat: 'TSV'}, function (err) {
 	       if (err) console.log('ERROR METRIC BULK',err);
@@ -102,7 +102,7 @@ var labelParser = function(labels){
 
 var databaseName;
 var getTableQuery = function(dbName,tableName){
-	return "CREATE TABLE "+tableName+"( fingerprint UInt64,  timestamp_ms Int64,  value Float64,  string String) ENGINE = MergeTree PARTITION BY toRelativeHourNum(toDateTime(timestamp_ms / 1000)) ORDER BY (fingerprint, timestamp_ms)"
+	return "CREATE TABLE "+tableName+"( fingerprint UInt64,  timestamp_ms Int64,  value Float64,  string String, message String) ENGINE = MergeTree PARTITION BY toRelativeHourNum(toDateTime(timestamp_ms / 1000)) ORDER BY (fingerprint, timestamp_ms)"
 }
 var getSeriesTableName = function(tableName){
 }
@@ -278,6 +278,8 @@ app.post('/write', function(req, res) {
 		}
 	    });
 
+	  query.parsed.db = dbName;
+
 	  if (query.measurement) table = query.measurement;
 	  if (tables.indexOf(query.parsed.measurement) === -1) {
 		  console.log('Creating new table...',query.parsed.measurement)
@@ -300,8 +302,16 @@ var sendQuery = function(query,reload){
 		for (var key in field){
 		  var unique = JSON.parse(JSON.stringify(query.parsed.tags)); unique.push({"__name__":key});
 		  var uuid = JSON.stringify(unique);
-		  var values = [ parseInt(fingerPrint(uuid)), new Date(query.parsed.timestamp/1000000).getTime(), field[key] || 0, key || "" ];
-		  bulk.add(query.parsed.measurement, values);
+		  var ts = new Date(query.parsed.timestamp/1000000).getTime() || new Date().getTime();
+
+		  if (key == "message" || key == "procid") {
+		  	var values = [ parseInt(fingerPrint(uuid)), ts, 0, key, field[key] || "" ];
+		  } else {
+		  	var values = [ parseInt(fingerPrint(uuid)), ts, parseFloat(field[key]) || 0, key || "", "" ];
+		  }
+		  var target = query.parsed.db ? query.parsed.db + "." + query.parsed.measurement : query.parsed.measurement;
+		  bulk.add(target, values);
+
 		}
 	  })
 }
