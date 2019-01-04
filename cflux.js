@@ -34,7 +34,7 @@ String.prototype.replaceAll = function(search, replacement) {
 var recordCache = require('record-cache');
 var onStale = function(data){
  	for (let [key, value] of data.records.entries()) {
-	     var statement = "INSERT INTO "+key+"(fingerprint, timestamp_ms, value, string, string)";
+	     var statement = "INSERT INTO "+key+"(fingerprint, timestamp_ms, value, string, message)";
    	     ch = new ClickHouse(clickhouse_options);
 	     var clickStream = ch.query (statement, {inputFormat: 'TSV'}, function (err) {
 	       if (err) console.log('ERROR METRIC BULK',err);
@@ -303,14 +303,15 @@ var sendQuery = function(query,reload){
 		  var unique = JSON.parse(JSON.stringify(query.parsed.tags)); unique.push({"__name__":key});
 		  var uuid = JSON.stringify(unique);
 		  var ts = new Date(query.parsed.timestamp/1000000).getTime() || new Date().getTime();
+		  var target = query.parsed.db ? query.parsed.db + "." + query.parsed.measurement : query.parsed.measurement;
 
 		  if (key == "message" || key == "procid") {
-		  	var values = [ parseInt(fingerPrint(uuid)), ts, 0, key, field[key] || "" ];
+		  	var values = [ parseInt(fingerPrint(uuid)), ts, 0, key, field[key] || "null" ];
+			bulk.add(target, values);
 		  } else {
 		  	var values = [ parseInt(fingerPrint(uuid)), ts, parseFloat(field[key]) || 0, key || "", "" ];
+			bulk.add(target, values);
 		  }
-		  var target = query.parsed.db ? query.parsed.db + "." + query.parsed.measurement : query.parsed.measurement;
-		  bulk.add(target, values);
 
 		}
 	  })
