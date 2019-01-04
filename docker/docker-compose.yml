@@ -71,6 +71,10 @@ services:
   telegraf:
     container_name: telegraf
     image: telegraf:1.9-alpine
+    expose:
+      - 6514
+    ports:
+      - "6514:6514"
     links:
       - cflux
     volumes:
