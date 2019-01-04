@@ -50,6 +50,37 @@ var onStale = function(data){
 	     clickStream.end ();
         }
 }
+var onStale_string = function(data){
+ 	for (let [key, value] of data.records.entries()) {
+	     var statement = "INSERT INTO "+key+"(fingerprint, timestamp_ms, string, message)";
+   	     ch = new ClickHouse(clickhouse_options);
+	     var clickStream = ch.query (statement, {inputFormat: 'TSV'}, function (err) {
+	       if (err) console.log('ERROR METRIC STRING BULK',err);
+	       if (debug) console.log ('Insert String Samples complete for',key);
+	     });
+ 	     value.list.forEach(function(row){
+		if (!row.record) return;
+		clickStream.write ( row.record );
+             });
+	     clickStream.end ();
+        }
+}
+var onStale_float = function(data){
+ 	for (let [key, value] of data.records.entries()) {
+	     var statement = "INSERT INTO "+key+"(fingerprint, timestamp_ms, value, string)";
+   	     ch = new ClickHouse(clickhouse_options);
+	     var clickStream = ch.query (statement, {inputFormat: 'TSV'}, function (err) {
+	       if (err) console.log('ERROR METRIC FLOAT BULK',err);
+	       if (debug) console.log ('Insert Float Samples complete for',key);
+	     });
+ 	     value.list.forEach(function(row){
+		if (!row.record) return;
+		clickStream.write ( row.record );
+             });
+	     clickStream.end ();
+        }
+}
+
 var onStale_labels = function(data){
  	for (let [key, value] of data.records.entries()) {
 		// measurement = table, name = metric name
@@ -67,12 +98,24 @@ var onStale_labels = function(data){
         }
 }
 
-// Flushing to Clickhouse
+// Generic Bulk Pipeline
 var bulk = recordCache({
   maxSize: 5000,
   maxAge: 2000,
   onStale: onStale
 })
+// Per Type-Bulk Pipelines
+var bulk_float = recordCache({
+  maxSize: 5000,
+  maxAge: 2000,
+  onStale: onStale_float
+})
+var bulk_string = recordCache({
+  maxSize: 5000,
+  maxAge: 2000,
+  onStale: onStale_string
+})
+// Label Bulk Pipeline
 var bulk_labels = recordCache({
   maxSize: 100,
   maxAge: 500,
@@ -104,7 +147,7 @@ var labelParser = function(labels){
 }
 
 var databaseName;
-var getTableQuery = function(dbName,tableName){
+var getTableQuery = function(dbName,tableName,string){
 	return "CREATE TABLE "+tableName+"( fingerprint UInt64,  timestamp_ms Int64,  value Float64,  string String, message String) ENGINE = MergeTree PARTITION BY toRelativeHourNum(toDateTime(timestamp_ms / 1000)) ORDER BY (fingerprint, timestamp_ms)"
 }
 var getSeriesTableName = function(tableName){
@@ -307,15 +350,14 @@ var sendQuery = function(query,reload){
 		  var uuid = JSON.stringify(unique);
 		  var ts = new Date(query.parsed.timestamp/1000000).getTime() || new Date().getTime();
 		  var target = query.parsed.db ? query.parsed.db + "." + query.parsed.measurement : query.parsed.measurement;
-
-		  if (key == "message" || key == "procid") {
-		  	var values = [ parseInt(fingerPrint(uuid)), ts, 0, key, field[key] || "null" ];
-			bulk.add(target, values);
+		  var floatv = parseFloat(field[key]);
+		  if (!floatv) {
+		  	var values = [ parseInt(fingerPrint(uuid)), ts, key, field[key] || "" ];
+			bulk_string.add(target, values);
 		  } else {
-		  	var values = [ parseInt(fingerPrint(uuid)), ts, parseFloat(field[key]) || 0, key || "", "" ];
-			bulk.add(target, values);
+		  	var values = [ parseInt(fingerPrint(uuid)), ts, parseFloat(field[key]) || 0, key || "" ];
+			bulk_float.add(target, values);
 		  }
-
 		}
 	  })
 }
@@ -637,15 +679,15 @@ app.all('/query', function(req, res) {
 		console.log('DB: '+ settings.db);
 		console.log('TABLE: '+ settings.table);
 
+		// TIMERANGE MATCHING
                 try {
 		  if (where.condition){
                     if( where.condition.right.left.name
                         && where.condition.right.left.name.value == 'now'
                         && where.condition.right.right && where.condition.right.right.value
                         && where.condition.right.right.range){
-                            var from_ts = "toDateTime( now()-" +toTime(where.condition.right.right.value+where.condition.right.right.range.data_type).seconds()+  ")";
-                            var to_ts = "toDateTime( now() )";
-
+                            	var from_ts = "toDateTime( now()-" +toTime(where.condition.right.right.value+where.condition.right.right.range.data_type).seconds()+  ")";
+                            	var to_ts = "toDateTime( now() )";
                     } else if(where.condition.left.left && where.condition.left.left.value == 'time' && where.condition.right && where.condition.right.left.value == 'time') {
 			if (where.condition.left.right.value && where.condition.right.right.value){
                         	var from_ts = "toDateTime(" + parseInt(where.condition.left.right.value/tsDivide) + ")";
@@ -655,16 +697,16 @@ app.all('/query', function(req, res) {
                         	var to_ts =   "toDateTime(toUnixTimestamp('"+formatDate( new Date(where.condition.right.right.string)) +"'))";
 			}
                     } else {
-                        var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'toDateTime(now()-300)';
-                        var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'toDateTime(now())';
+                        	var from_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.from_timestamp/1000)+")" : 'toDateTime(now()-300)';
+                        	var to_ts = where.condition.left.value == 'time' ? "toDateTime("+parseInt(where.condition.right.left.name.to_timestamp/1000)+")" : 'toDateTime(now())';
                     }
                   }
                 } catch(e){
-                        console.log('DATE RANGE ERR',e);
-                        var from_ts = 'toDateTime(now()-3600)';
-                        var to_ts = 'toDateTime(now())';
+                        	console.log('DATE RANGE ERR',e);
+                        	var from_ts = 'toDateTime(now()-3600)';
+                        	var to_ts = 'toDateTime(now())';
                 }
-		console.log('TIME RANGE: '+ from_ts, to_ts);
+		if (debug) console.log('TIME RANGE: '+ from_ts, to_ts);
 
 		var response = [];
 
@@ -685,7 +727,7 @@ app.all('/query', function(req, res) {
 			  var nameas = source.name;
 			  source.sourceColumns.forEach(function(metric_id){
 				if (metric_id.value){
-				   var tmp = "SELECT toUnixTimestamp(toStartOfMinute(toDateTime(timestamp_ms/1000))) as minute, name, avg(value) as mean, labelname, labelvalue"
+				   var tmp = "SELECT toUnixTimestamp(toStartOfMinute(toDateTime(timestamp_ms/1000))) as minute, name, avg(value) as mean, labelname, labelvalue, message "
 					+" FROM "+settings.table+" ANY INNER JOIN ("
 						+"SELECT fingerprint, name, labelname, labelvalue"
 						+" FROM ("
@@ -702,7 +744,7 @@ app.all('/query', function(req, res) {
 					tmp+=" )"
 					+" USING(fingerprint)"
 					+" PREWHERE minute BETWEEN "+from_ts+ " AND " + to_ts
-					+" GROUP by fingerprint, minute, name, labelname,labelvalue ORDER by minute";
+					+" GROUP by fingerprint, minute, name, labelname, labelvalue, message ORDER by minute";
 
 				   inner.push(tmp);
 				}
@@ -710,11 +752,11 @@ app.all('/query', function(req, res) {
 			})
 			prepare += " ( "+inner.join(' UNION ALL ') + ") ";
 		}
-		prepare += " ORDER BY minute,name,labelname,labelvalue"
+		prepare += " ORDER BY minute,name,labelname,labelvalue,message"
 
 		// CLOSE PREPARE
 
-		if (debug) console.log('NEW QUERY',prepare);
+		console.log('NEW QUERY',prepare);
 
 		if (settings.db) {
 			clickhouse_options.queryOptions.database = settings.db;
@@ -731,15 +773,16 @@ app.all('/query', function(req, res) {
 		var stream = tmp.query(prepare);
 		stream.on ('data', function (row) {
 
-		  var tmp = [ row[0]*1000, row[2] ];
+		  var tmp = [ row[0]*1000, row[5] || row[2] ];
 
 		  if(!xtags[row[1]]) {
 			 xtags[row[1]] = {};
 			 if(!xtags[row[1]][row[3]]) {
 				xtags[row[1]][row[3]] = {}
+
 			 	if(!xtags[row[1]][row[3]][row[4]]) {
 					xtags[row[1]][row[3]][row[4]] = []
-					if (debug) console.log('Tag Created!');
+					if (debug) console.log('Float Tag Created!');
 				}
 			}
 		  }
