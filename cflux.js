@@ -98,11 +98,12 @@ var onStale_labels = function(data){
         }
 }
 
-// Generic Bulk Pipeline
-var bulk = recordCache({
-  maxSize: 5000,
-  maxAge: 2000,
-  onStale: onStale
+// Subscriptions
+var subscriptions = {};
+var subscriptions_cache = recordCache({
+  maxSize: 100,
+  maxAge: 0,
+  onStale: false
 })
 // Per Type-Bulk Pipelines
 var bulk_float = recordCache({
@@ -268,6 +269,8 @@ var getTables = function(dbName){
 }
 
 /* HTTP Helper */
+const axios = require('axios');
+const fwd = axios.create({ timeout: 5000 })
 
 var express = require('express')
   , http = require('http')
@@ -307,6 +310,10 @@ app.post('/write', function(req, res) {
   	ch = new ClickHouse(clickhouse_options);
   } else { ch =  new ClickHouse(clickhouse_options); }
 
+  if (subscriptions[dbName]) {
+	fwd.post(subscriptions[dbName].target, req.rawBody).catch(err => console.error('Subscription delivery failed ==========', err))
+  }
+
   var queries = req.rawBody.split("\n");
   queries.forEach(function(rawBody){
 	  if (!rawBody || rawBody == '') return;
@@ -339,6 +346,8 @@ app.post('/write', function(req, res) {
 		  sendQuery(query,false);
 	  }
   });
+
+  
   res.sendStatus(204);
 });
 
@@ -663,6 +672,16 @@ app.all('/query', function(req, res) {
 			var results = {"results":[{"statement_id":0,"series":[{"name":"databases","columns":["name"], "values": response } ]} ]};
 			res.send(results);
 		});
+
+          } else if (rawQuery.startsWith('CREATE SUBSCRIPTION')) {
+
+		// CREATE SUBSCRIPTION "kapacitor-34435716-7d1c-46ad-a0c2-8ced9873dff3" ON chronograf.autogen DESTINATIONS ANY 'http://kapacitor:9092'
+		   var parsed = rawQuery.match(/CREATE SUBSCRIPTION \"(.*)\" ON (.*) DESTINATIONS ANY \'(.*)\'/);
+		   if (parsed && parsed[1] && parsed[2] && parsed[3]){
+			console.log('SUBSCRIPTION FOR '+parsed[2]+" towards "+parsed[3])
+			subscriptions[parsed[2]] = { target: parsed[3], id: parsed[1] };
+			subscriptions_cache.add(parsed[2], parsed);
+		   }
 
           } else if (rawQuery.startsWith('SELECT')) {
 
