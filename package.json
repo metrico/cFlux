@@ -23,7 +23,7 @@
     "axios": "^0.21.2",
     "express": "^4.16.4",
     "ifql-parser": "^0.2.1",
-    "record-cache": "^1.1.0",
+    "record-cache": "^1.2.0",
     "short-hash": "^1.0.0",
     "to-time": "^1.0.2"
   }
