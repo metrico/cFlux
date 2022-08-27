@@ -1,5 +1,5 @@
 # nonFlux Clickhouse
-FROM node:8
+FROM node:16-alpine
 
 # BUILD FORCE
 ENV BUILD 703022
