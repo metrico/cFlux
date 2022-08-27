@@ -18,7 +18,7 @@
   },
   "homepage": "https://github.com/lmangani/nonflux#readme",
   "dependencies": {
-    "@apla/clickhouse": "^1.5.3",
+    "@apla/clickhouse": "^1.6.4",
     "@qxip/influx-line-protocol-parser": "^0.2.1",
     "axios": "^0.27.2",
     "express": "^4.16.4",
