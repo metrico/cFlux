@@ -5,18 +5,10 @@ services:
 
   clickhouse-seed:
     container_name: clickhouse-seed
-    image: yandex/clickhouse-server
+    image: clickhouse/clickhouse-server
     ports:
       - "8123:8123"   # HTTP transport
 #      - "9000:9000"   # Native clients
-
-  clickhouse-client:
-    container_name: clickhouse-client
-    image: yandex/clickhouse-client
-    entrypoint:
-      - /bin/sleep
-    command:
-      - infinity
 
   cflux:
     container_name: cflux
