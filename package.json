@@ -20,7 +20,7 @@
   "dependencies": {
     "@apla/clickhouse": "^1.6.4",
     "@qxip/influx-line-protocol-parser": "^0.2.1",
-    "axios": "^0.27.2",
+    "axios": "^1.1.2",
     "express": "^4.18.1",
     "ifql-parser": "^0.2.1",
     "record-cache": "^1.2.0",
